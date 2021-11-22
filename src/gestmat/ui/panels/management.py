@@ -337,7 +337,6 @@ class ManagementPanel(Panel):
 
     def sub_property_management(self, cat):
         uuid = dpg.generate_uuid()
-        print(cat)
         with dpg.group(tag=uuid, parent=self.parent):
             dpg.add_button(
                 label="Retour", callback=factory(self.load_subpanel, "category", False, cat)
