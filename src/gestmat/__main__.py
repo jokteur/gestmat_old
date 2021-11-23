@@ -32,9 +32,9 @@ def hello_world():
     # fr = Item(manager.categories["FR"], )
     frs = []
     prps = []
-    # for i in range(24):
-    #     frs.append(Item(manager.categories["FR"], id=f"FR {107+i}"))
-    #     prps.append(define_new_property(str(i), value_type=str))
+    for i in range(8):
+        frs.append(Item(manager.categories["FR"], id=f"FR {107+i}"))
+        prps.append(define_new_property(str(i), value_type=str))
     # manager.update_properties(
     #     manager.categories["FR"], manager.categories["FR"].properties_order + prps
     # )
