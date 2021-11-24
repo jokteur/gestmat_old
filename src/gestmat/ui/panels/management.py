@@ -4,7 +4,7 @@ import time
 
 import dearpygui.dearpygui as dpg
 
-from matgest.item.representation import Item, ItemCategory
+from ...item.representation import Item, ItemCategory
 
 from ...item.manager import ItemManager
 from ..panel import Panel
@@ -546,7 +546,13 @@ class ManagementPanel(Panel):
                 tag = self.memory["table_cells"][item][prop]
                 dpg.delete_item(tag, children_only=True)
                 if prop.select:
-                    dpg.add_combo(prop.select, parent=tag, label="", default_value=item.properties[prop].value, width=-1)
+                    dpg.add_combo(
+                        prop.select,
+                        parent=tag,
+                        label="",
+                        default_value=item.properties[prop].value,
+                        width=-1,
+                    )
                 else:
                     dpg.add_input_text(
                         parent=tag,

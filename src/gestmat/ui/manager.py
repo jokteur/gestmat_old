@@ -2,7 +2,7 @@ import dearpygui.dearpygui as dpg
 import dearpygui_ext.themes as dpg_ext
 import dearpygui.demo as demo
 
-from matgest.ui.widgets import modal
+from ..ui.widgets import modal
 
 from .panel import Panel
 from .panels.management import ManagementPanel

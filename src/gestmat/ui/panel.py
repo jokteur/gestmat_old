@@ -1,6 +1,6 @@
 import dearpygui.dearpygui as dpg
 
-from matgest.item.representation import Item
+from ..item.representation import Item
 
 from ..item.manager import ItemManager
 
