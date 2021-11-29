@@ -7,6 +7,8 @@ import time
 import copy
 from typing import Optional, Set, Any, Type, Union
 
+from ..util import strip_special_chars
+
 from .representation import Item, ItemCategory, ItemProperty, define_new_property
 
 
@@ -102,6 +104,7 @@ class ItemManager:
         self.retired_items = set()
         self.retired_loans = {}
         self.retired_persons = set()
+        self.empty_person = Person()
 
     def add_category(self, name: str, description: str, properties: list):
         """
@@ -122,7 +125,7 @@ class ItemManager:
 
         for prop in properties:
             if isinstance(prop, str):
-                prop_type = ItemProperty.get(prop)
+                prop_type = ItemProperty.get(strip_special_chars(prop))
                 if prop_type:
                     list_properties.append(prop_type)
             elif isinstance(prop, type):

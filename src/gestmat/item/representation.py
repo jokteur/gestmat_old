@@ -92,7 +92,7 @@ def define_new_property(
 
 def _return_prop_type(prop):
     if isinstance(prop, str):
-        return ItemProperty.get(prop)
+        return ItemProperty.get(strip_special_chars(prop))
     elif isinstance(prop, type):
         return prop
     else:

@@ -1,4 +1,5 @@
 import colorsys
+from datetime import datetime
 import dearpygui.dearpygui as dpg
 
 from .res import Ressources
@@ -87,4 +88,91 @@ def modal(text: str):
     dpg.delete_item(tag, children_only=True)
     dpg.add_text(text, parent=tag)
     dpg.add_button(label="OK", callback=stop_show, parent=tag)
+
+    popup_width = dpg.get_item_width("modal_popup")
+    popup_height = dpg.get_item_height("modal_popup")
+    window_width = dpg.get_item_width("primary_window")
+    window_height = dpg.get_item_height("primary_window")
+    if popup_width < window_width and popup_height < window_height:
+        dpg.set_item_pos(
+            "modal_popup", [(window_width - popup_width) / 2, (window_height - popup_height) / 2]
+        )
     dpg.configure_item(tag, show=True)
+
+
+class DateWidget:
+    def __init__(self, parent, date: datetime = None) -> None:
+        self.memory = dict(
+            day_uuid=dpg.generate_uuid(),
+            month_uuid=dpg.generate_uuid(),
+            year_uuid=dpg.generate_uuid(),
+        )
+        self.parent = parent
+
+        def callback(sender, data):
+            max_length = 2
+            if sender == self.memory["year_uuid"]:
+                max_length = 4
+
+            # Verify if callback not called twice
+            if sender not in self.memory:
+                self.memory[sender] = False
+
+            set_data = None
+
+            if not self.memory[sender]:
+                unauthorized_chars = [s for s in [".", "+", "-", "*", "/"] if s in data]
+                if unauthorized_chars:
+                    set_data = "".join([s for s in data if s.isdigit()])
+                if len(data) == 2:
+                    if sender == self.memory["day_uuid"]:
+                        dpg.focus_item(self.memory["month_uuid"])
+                    elif sender == self.memory["month_uuid"]:
+                        dpg.focus_item(self.memory["year_uuid"])
+            else:
+                self.memory[sender] = False
+
+            if isinstance(set_data, str):
+                self.memory[sender] = True
+                dpg.set_value(self.memory["day_uuid"], set_data)
+
+        with dpg.group(horizontal=True, parent=parent):
+            dpg.add_input_text(
+                decimal=True,
+                no_spaces=True,
+                width=30,
+                tag=self.memory["day_uuid"],
+                callback=callback,
+                default_value=date.day if date else "",
+                hint="Jour",
+            )
+            dpg.add_text("/")
+            dpg.add_input_text(
+                decimal=True,
+                no_spaces=True,
+                width=30,
+                tag=self.memory["month_uuid"],
+                callback=callback,
+                default_value=date.month if date else "",
+                hint="Mois",
+            )
+            dpg.add_text("/")
+            dpg.add_input_text(
+                decimal=True,
+                no_spaces=True,
+                width=60,
+                tag=self.memory["year_uuid"],
+                callback=callback,
+                default_value=date.year if date else "",
+                hint="Année",
+            )
+
+    def get_date(self) -> datetime:
+        year = dpg.get_value(self.memory["year_uuid"])
+        month = dpg.get_value(self.memory["month_uuid"])
+        day = dpg.get_value(self.memory["day_uuid"])
+        try:
+            date = datetime(int(year), int(month), int(day))
+        except ValueError:
+            return None
+        return date

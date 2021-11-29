@@ -1,3 +1,5 @@
+import os
+import tempfile
 import dearpygui.dearpygui as dpg
 import dearpygui_ext.themes as dpg_ext
 import dearpygui.demo as demo
@@ -38,13 +40,13 @@ class UIManager(metaclass=Singleton):
 
         opts = {"width": 100, "height": 40}
         self.buttons = {}
-        self.buttons["state"] = dict(
-            label="État", callback=lambda: self.load_panel("state"), **opts
-        )
         self.buttons["loan"] = dict(label="Prêt", callback=lambda: self.load_panel("loan"), **opts)
         # self.buttons["return"] = dict(
         #     label="Retour", callback=lambda: self.load_panel("return"), **opts
         # )
+        self.buttons["state"] = dict(
+            label="État", callback=lambda: self.load_panel("state"), **opts
+        )
         self.buttons["management"] = dict(
             label="Gestion", callback=lambda: self.load_panel("management"), **opts
         )
@@ -71,10 +73,6 @@ class UIManager(metaclass=Singleton):
         with dpg.window(tag="primary_window"):
             dpg.bind_font(ressources.fonts["default"])
 
-            dpg.add_button(label="", width=0, height=0, show=False, tag="modal_button_popup")
-            with dpg.popup("modal_button_popup", modal=True, tag="modal_popup"):
-                pass
-
             with dpg.menu_bar(tag="menu_top"):
                 dpg.add_menu(label="Options")
 
@@ -83,15 +81,31 @@ class UIManager(metaclass=Singleton):
                     pass
                 with dpg.child_window(tag="panels", width=-1, height=0):
                     pass
+            dpg.add_button(
+                label="", pos=[500, 250], width=0, height=0, show=False, tag="modal_button_popup"
+            )
+            with dpg.popup("modal_button_popup", modal=True, tag="modal_popup"):
+                pass
 
         dpg.create_viewport(title="Gestion materiel", width=1000, height=600)
 
-        self.load_panel("state")
+        self.load_panel("loan")
         # demo.show_demo()
 
         dpg.setup_dearpygui()
         dpg.show_viewport()
         dpg.set_primary_window("primary_window", True)
+
+        # Remove splash screen
+        # if "NUITKA_ONEFILE_PARENT" in os.environ:
+        #     splash_filename = os.path.join(
+        #         tempfile.gettempdir(),
+        #         "onefile_%d_splash_feedback.tmp" % int(os.environ["NUITKA_ONEFILE_PARENT"]),
+        #     )
+
+        #     if os.path.exists(splash_filename):
+        #         os.unlink(splash_filename)
+
         dpg.start_dearpygui()
         dpg.destroy_context()
 

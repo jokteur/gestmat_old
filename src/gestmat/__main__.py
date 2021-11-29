@@ -1,4 +1,5 @@
 import datetime
+import random
 import dearpygui.dearpygui as dpg
 import dearpygui.demo as demo
 
@@ -11,37 +12,44 @@ from .ui.manager import UIManager
 def hello_world():
     manager = ItemManager()
     IDProp = define_new_property("ID", value_type=str, mandatory=True, no_edit=True)
-    LengthProp = define_new_property("length", value_type=int, unit="cm")
-    HeightProp = define_new_property("height", value_type=int, unit="cm")
+    LengthProp = define_new_property("largeur", value_type=int, unit="cm")
+    HeightProp = define_new_property("hauteur", value_type=int, unit="cm")
 
-    sideProp = define_new_property("side", value_type=str)
+    sideProp = define_new_property("Côté", value_type=str, select=["gauche", "droite"])
 
-    manager.add_category("FR", "Fauteuil roulant", [IDProp, "length", "side"])
-    manager.add_category("CP", "Cale-pied", ["id", "side"])
-    manager.add_category("COUSS", "Coussin VICAIR", ["id", "length"])
-    manager.add_category("ROHO", "Coussin ROHO", ["id", "side"])
-    manager.add_category("PANNEAU", "Panneau d'orientation", ["id", "side"])
+    manager.add_category("FR", "Fauteuil roulant", [IDProp, "largeur", "Côté"])
+    manager.add_category("PE", "Planche d'extension", ["id", "Côté"])
+    manager.add_category("COUSS", "Coussin VICAIR", ["id", "largeur"])
+    manager.add_category("ROHO", "Coussin ROHO", ["id", "Côté"])
+    manager.add_category("PANNEAU", "Panneau d'orientation", ["id", "Côté"])
 
-    manager.categories["FR"].add_property("height")
-    manager.categories["FR"].remove_property("side")
+    manager.categories["FR"].add_property("hauteur")
+    manager.categories["FR"].remove_property("Côté")
 
-    fr1 = Item(manager.categories["FR"], id="FR 103", length=45, height=46)
-    fr2 = Item(manager.categories["FR"], id="FR 105", length=48, height=47)
-    fr3 = Item(manager.categories["FR"], id="FR 106", length=50, height=48)
+    fr1 = Item(manager.categories["FR"], id="FR 103", largeur=45, hauteur=46)
+    fr2 = Item(manager.categories["FR"], id="FR 105", largeur=48, hauteur=47)
+    fr3 = Item(manager.categories["FR"], id="FR 106", largeur=50, hauteur=48)
 
     # fr = Item(manager.categories["FR"], )
     frs = []
     prps = []
     for i in range(8):
-        frs.append(Item(manager.categories["FR"], id=f"FR {107+i}"))
+        frs.append(
+            Item(
+                manager.categories["FR"],
+                id=f"FR {107+i}",
+                largeur=random.randint(40, 50),
+                hauteur=random.randint(40, 55),
+            )
+        )
         prps.append(define_new_property(str(i), value_type=str))
     # manager.update_properties(
     #     manager.categories["FR"], manager.categories["FR"].properties_order + prps
     # )
 
-    cp1 = Item(manager.categories["CP"], id="CP 1", side="G")
-    cp2 = Item(manager.categories["CP"], id="CP 2", side="D")
-    cp3 = Item(manager.categories["CP"], id="CP 3", side="D")
+    cp1 = Item(manager.categories["PE"], id="PE 1", cote="gauche")
+    cp2 = Item(manager.categories["PE"], id="PE 2", cote="droite")
+    cp3 = Item(manager.categories["PE"], id="PE 3", cote="droite")
 
     manager.add_items([fr1, fr2, fr3, cp1, cp2, cp3] + frs)
 

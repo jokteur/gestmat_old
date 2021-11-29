@@ -2,7 +2,9 @@
 #
 # MatGest
 
+import datetime
 import unicodedata
+from datetime import date, datetime
 
 
 class Singleton(type):
@@ -12,6 +14,22 @@ class Singleton(type):
         if cls not in cls._instances:
             cls._instances[cls] = super(Singleton, cls).__call__(*args, **kwargs)
         return cls._instances[cls]
+
+
+class ProtectedDatetime:
+    def __init__(self, date: datetime) -> None:
+        self.date = date
+        self.year, self.month, self.day = "", "", ""
+        if date:
+            self.year = date.year
+            self.month = date.month
+            self.day = date.day
+
+    def strftime(self, format):
+        if isinstance(self.date, datetime):
+            return self.date.strftime(format)
+        else:
+            return ""
 
 
 def strip_accents(text):
