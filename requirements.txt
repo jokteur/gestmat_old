@@ -1,3 +1,5 @@
 nuitka
 zstandard
 imageio
+dearpygui
+black

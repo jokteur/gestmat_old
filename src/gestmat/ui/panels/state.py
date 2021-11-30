@@ -1,3 +1,5 @@
+from datetime import datetime
+
 import dearpygui.dearpygui as dpg
 
 from ..widgets import help, title
@@ -6,23 +8,52 @@ from ...util import strip_accents
 from ..panel import Panel
 
 
+def factory(fct, *args, **kwargs):
+    def new_func():
+        return fct(*args, **kwargs)
+
+    return new_func
+
+
 class StatePanel(Panel):
     def __init__(self, manager: ItemManager) -> None:
         super().__init__(manager)
 
-    def main_window(self, parent) -> None:
-        super().main_window(parent)
+        self.memory = dict()
 
-        title_uuid = dpg.generate_uuid()
-        dpg.add_group(tag=title_uuid, horizontal=True, parent=parent)
-        title("Matériel en emprunt", parent=title_uuid)
+    def load_subpanel(self, name, *args):
+        dpg.delete_item(self.memory["view_uuid"], children_only=True)
+        self.__getattribute__(f"sub_{name}")(*args)
 
-        help(
-            "Tapez n'importe quel mot du tableau dans le champ de recherche pour trouver une ligne.\n"
-            "Cliquez sur les en-tête de colonnes pour trier.",
-            title_uuid,
-        )
+        dpg.delete_item(self.memory["buttons_uuid"], children_only=True)
 
+        if name == "table_view":
+            dpg.add_button(
+                label="Voir emprunts par personne",
+                callback=lambda *args: self.load_subpanel("person_view"),
+                parent=self.memory["buttons_uuid"],
+            )
+        else:
+            dpg.add_button(
+                label="Voir liste tous les emprunts",
+                callback=lambda *args: self.load_subpanel("table_view"),
+                parent=self.memory["buttons_uuid"],
+            )
+
+    def give_back(self):
+        for loan, id in self.memory["checkbox"].items():
+            if dpg.get_value(id):
+                self.manager.give_back(loan, datetime.today())
+        self.build_main_window()
+
+    def build_main_window(self):
+        dpg.delete_item(self.parent, children_only=True)
+
+        self.memory = dict()
+
+        self.main_window(self.parent)
+
+    def sub_table_view(self):
         def _sort_callback(sender, sort_specs):
 
             # sort_specs scenarios:
@@ -61,17 +92,31 @@ class StatePanel(Panel):
 
             dpg.reorder_items(sender, 1, new_order)
 
+        parent = self.memory["view_uuid"]
+
         if not self.manager.loans:
             dpg.add_text("Rien en emprunt")
             return
 
-        _filter_table_id = dpg.generate_uuid()
-        dpg.add_input_text(
-            label="Rechercher",
-            user_data=_filter_table_id,
-            callback=lambda s, a, u: dpg.set_value(u, strip_accents(dpg.get_value(s))),
-            parent=parent,
-        )
+        with dpg.group(parent=parent):
+            dpg.add_button(
+                label="Rendre les objets sélectionnés", callback=lambda *args: self.give_back()
+            )
+
+        with dpg.group(parent=parent, horizontal=True) as group:
+            _filter_table_id = dpg.generate_uuid()
+            dpg.add_input_text(
+                label="Rechercher",
+                user_data=_filter_table_id,
+                callback=lambda s, a, u: dpg.set_value(u, strip_accents(dpg.get_value(s))),
+            )
+            help(
+                "Tapez n'importe quel mot du tableau dans le champ de recherche pour trouver une ligne.\n"
+                "Cliquez sur les en-tête de colonnes pour trier.",
+                group,
+            )
+
+        self.memory["checkbox"] = dict()
 
         with dpg.table(
             header_row=True,
@@ -84,15 +129,17 @@ class StatePanel(Panel):
             scrollX=True,
             delay_search=True,
             parent=parent,
+            resizable=True,
             sortable=True,
             callback=_sort_callback,
             policy=dpg.mvTable_SizingStretchProp,
             tag=_filter_table_id,
         ) as table_id:
             # self.items.append("loan_table")
+            dpg.add_table_column(label="", width=35, no_sort=True, width_fixed=True)
+            dpg.add_table_column(label="Date d'emprunt")
             dpg.add_table_column(label="Type")
             dpg.add_table_column(label="N°", width=50)
-            dpg.add_table_column(label="Date d'emprunt")
             dpg.add_table_column(label="Nom")
             dpg.add_table_column(label="Prénom")
             dpg.add_table_column(label="Date de naissance")
@@ -102,9 +149,9 @@ class StatePanel(Panel):
             for item, loans in self.manager.loans.items():
                 for loan in loans:
                     strings = {
+                        loan.date.strftime("%Y/%m/%d"): dict(),
                         item.category.description: dict(),
                         item.id.value: dict(),
-                        loan.date.strftime("%Y/%m/%d"): dict(),
                         loan.person.surname: dict(),
                         loan.person.name: dict(),
                         loan.person.birthday.strftime("%Y/%m/%d"): dict(),
@@ -113,5 +160,30 @@ class StatePanel(Panel):
                     }
                     strs = [strip_accents(string) for string in strings.keys()]
                     with dpg.table_row(filter_key=" ".join(strs)):
+                        self.memory["checkbox"][loan] = dpg.generate_uuid()
+                        dpg.add_checkbox(label="", tag=self.memory["checkbox"][loan])
                         for text, prop in strings.items():
                             dpg.add_text(text, **prop)
+
+    def sub_person_view(self):
+        pass
+
+    def main_window(self, parent) -> None:
+        self.parent = parent
+
+        title_uuid = dpg.generate_uuid()
+        dpg.add_group(tag=title_uuid, horizontal=True, parent=parent)
+        title("Matériel en emprunt", parent=title_uuid)
+
+        self.memory["buttons_uuid"] = dpg.generate_uuid()
+        with dpg.group(tag=self.memory["buttons_uuid"], parent=title_uuid, horizontal=True):
+            dpg.add_button(
+                label="Voir emprunts par personne",
+                callback=lambda *args: self.load_subpanel("person_view"),
+            )
+
+        self.memory["view_uuid"] = dpg.generate_uuid()
+        with dpg.group(tag=self.memory["view_uuid"], parent=parent):
+            pass
+
+        self.sub_table_view()
