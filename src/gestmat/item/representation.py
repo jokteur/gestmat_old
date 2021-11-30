@@ -5,6 +5,7 @@
 from ..util import strip_special_chars
 
 import time
+import uuid
 from dataclasses import dataclass
 from collections import defaultdict
 from typing import Optional, Set, Any, Type, Union
@@ -161,6 +162,7 @@ class Item:
     properties: dict[type, ItemProperty]
     notes: list[dict]
     category: ItemCategory
+    uuid: str
 
     def __init__(self, category: ItemCategory, __empty__=False, **props):
         """
@@ -213,6 +215,7 @@ class Item:
         self.category.register_item(self)
 
         self.notes = {}
+        self.uuid = str(uuid.uuid4())
 
     def __repr__(self) -> str:
         properties = ""

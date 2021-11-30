@@ -3,3 +3,4 @@ zstandard
 imageio
 dearpygui
 black
+toml

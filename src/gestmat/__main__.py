@@ -7,6 +7,7 @@ from .item.representation import define_new_property, Item, ItemCategory
 from .item.manager import ItemManager, Person
 
 from .ui.manager import UIManager
+from .item.workspace import Workspace
 
 
 def hello_world():
@@ -75,7 +76,12 @@ def hello_world():
 
 def main():
 
-    manager = hello_world()
+    # manager = hello_world()
+
+    wkspace = Workspace()
+    wkspace.init(ItemManager())
+    manager = wkspace.loan_most_recent()
+    # wkspace.save()
 
     ui = UIManager(manager)
 

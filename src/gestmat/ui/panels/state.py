@@ -2,6 +2,7 @@ from datetime import datetime
 
 import dearpygui.dearpygui as dpg
 
+from ...item.workspace import Workspace
 from ..widgets import help, title
 from ...item.manager import ItemManager
 from ...util import strip_accents
@@ -13,6 +14,9 @@ def factory(fct, *args, **kwargs):
         return fct(*args, **kwargs)
 
     return new_func
+
+
+workspace = Workspace()
 
 
 class StatePanel(Panel):
@@ -44,6 +48,8 @@ class StatePanel(Panel):
         for loan, id in self.memory["checkbox"].items():
             if dpg.get_value(id):
                 self.manager.give_back(loan, datetime.today())
+
+        workspace.save()
         self.build_main_window()
 
     def build_main_window(self):

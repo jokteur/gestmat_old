@@ -2,6 +2,7 @@
 #
 # MatGest
 
+import uuid
 import datetime
 import time
 import copy
@@ -19,6 +20,7 @@ class Person:
     place: str
     note: str
     loans: Set["ItemLoan"]
+    uuid: str
 
     def __init__(
         self,
@@ -34,6 +36,7 @@ class Person:
         self.place = place
         self.note = note
         self.loans = set()
+        self.uuid = str(uuid.uuid4())
 
         self.items = []
 
@@ -49,13 +52,14 @@ class Person:
 
 
 class ItemLoan:
-    persons: Person
+    person: Person
     date: datetime.date
     loan_back: datetime.date
     finished: bool = False
     item: Item
     timestamp: float
     note: str
+    uuid: str
 
     def __init__(self, item: Item, date: datetime.date, person: Person, note: str):
         """Represents a loan of an item"""
@@ -65,6 +69,7 @@ class ItemLoan:
         self.note = note
         self.timestamp = time.time()
         self.person.register_loan(self)
+        self.uuid = str(uuid.uuid4())
 
     def __repr__(self) -> str:
         return f"Loan({self.person.surname}, date={self.date})"

@@ -4,6 +4,8 @@ import time
 
 import dearpygui.dearpygui as dpg
 
+from ...item.workspace import Workspace
+
 from ...item.representation import Item, ItemCategory
 
 from ...item.manager import ItemManager
@@ -16,6 +18,9 @@ def factory(fct, *args, **kwargs):
         return fct(*args, **kwargs)
 
     return new_func
+
+
+workspace = Workspace()
 
 
 class ManagementPanel(Panel):
@@ -159,6 +164,7 @@ class ManagementPanel(Panel):
                 cat.description = desc
                 self.manager.update_properties(cat, props_in_order)
                 self.manager.update_category_key(cat, old_name)
+                workspace.save()
                 self.build_main_window()
                 self.clean_memory()
 
@@ -287,6 +293,8 @@ class ManagementPanel(Panel):
                 radio = True if radio == "oui" else False
                 prop.mandatory = radio
                 dpg.configure_item(popup_uuid, show=False)
+
+                workspace.save()
                 self.load_subpanel("property_management", True, cat)
 
             def _new():
@@ -305,6 +313,8 @@ class ManagementPanel(Panel):
 
                 prop = self.manager.create_property(name, str, mandatory=mandatory, select=choices)
                 dpg.configure_item(popup_uuid, show=False)
+
+                workspace.save()
                 self.load_subpanel("property_management", True, cat)
 
             _save_edit = _edit if prop else _new
@@ -514,7 +524,8 @@ class ManagementPanel(Panel):
                 "Certaines propriétés n'ont pas pu être sauvegardées\n"
                 "car elles ne peuvent pas être vide (colonnes indiquées par *)"
             )
-        # else:
+
+        workspace.save()
 
         return
 

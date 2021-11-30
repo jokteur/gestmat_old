@@ -1,13 +1,14 @@
 from datetime import datetime
 import dearpygui.dearpygui as dpg
 
-from gestmat.util import ProtectedDatetime
-
+from ...item.workspace import Workspace
+from ...util import ProtectedDatetime
 from ...item.representation import ItemCategory, Item
-
 from ...item.manager import ItemManager, Person
 from ..panel import Panel
 from ..widgets import DateWidget, error, modal, title, subtitle, help
+
+workspace = Workspace()
 
 
 class LoanPanel(Panel):
@@ -353,6 +354,9 @@ class LoanPanel(Panel):
                     if self.manager.loans[item]:
                         self.manager.give_back(item, loan_date)
                 self.manager.create_loan(item, loan_date, person)
+
+            # Save the state of the loans
+            workspace.save()
 
         if not person.birthday.date:
             dpg.add_text(
