@@ -156,7 +156,7 @@ class StatePanel(Panel):
                         loan.person.name: dict(),
                         loan.person.birthday.strftime("%Y/%m/%d"): dict(),
                         loan.person.place: dict(),
-                        loan.note: dict(wrap=0),
+                        loan.person.note: dict(wrap=0),
                     }
                     strs = [strip_accents(string) for string in strings.keys()]
                     with dpg.table_row(filter_key=" ".join(strs)):

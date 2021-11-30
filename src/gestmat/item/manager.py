@@ -249,6 +249,12 @@ class ItemManager:
                     self.persons.remove(loan.person)
                     self.retired_persons.add(loan.person)
 
+    def is_item_loaned(self, item: Item) -> bool:
+        if item in self.loans:
+            if self.loans[item]:
+                return True
+        return False
+
     def give_back(self, loan_or_item: Union[Item, ItemLoan], date: datetime.date):
         """"""
         if isinstance(loan_or_item, Item):

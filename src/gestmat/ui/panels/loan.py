@@ -103,7 +103,7 @@ class LoanPanel(Panel):
 
             dpg.add_button(label="Enlever", callback=lambda *args: _remove_item())
             subtitle(cat.description, g_uid)
-            if item in self.manager.loans:
+            if self.manager.is_item_loaned(item):
                 dpg.add_text(" (déjà emprunté ")
                 help(
                     "L'objet déjà emprunté va être rendu, puis réemprunté avec la nouvelle personne.",
@@ -150,7 +150,9 @@ class LoanPanel(Panel):
         dpg.delete_item(parent, children_only=True)
 
         items = [
-            item for item in cat.registered_items if item not in self.manager.loans or all_items
+            item
+            for item in cat.registered_items
+            if not self.manager.is_item_loaned(item) or all_items
         ]
 
         def _set_items(s, d, u):
@@ -207,7 +209,7 @@ class LoanPanel(Panel):
                             callback=lambda *args, item=item: self.choose_item(obj_num, item),
                         )
                         if all_items:
-                            if item in self.manager.loans:
+                            if self.manager.is_item_loaned(item):
                                 dpg.add_text("Oui")
                             else:
                                 dpg.add_text("Non")
@@ -348,7 +350,8 @@ class LoanPanel(Panel):
             dpg.add_button(label="Ok", parent=tag, callback=lambda *args: self.reset())
             for item in items:
                 if item in self.manager.loans:
-                    self.manager.give_back(item, loan_date)
+                    if self.manager.loans[item]:
+                        self.manager.give_back(item, loan_date)
                 self.manager.create_loan(item, loan_date, person)
 
         if not person.birthday.date:
