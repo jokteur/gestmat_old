@@ -2,7 +2,7 @@ import os
 import datetime
 import json
 import gzip
-from ..util import Singleton
+from ..util import Singleton, to_date
 from .manager import ItemManager, Item, Person, ItemLoan, ItemCategory, ItemProperty
 
 
@@ -112,6 +112,149 @@ class Workspace(metaclass=Singleton):
             return False
         return True
 
+    def load(self, file) -> ItemManager:
+        try:
+            with gzip.open(file, "r") as fin:
+                json_bytes = fin.read()
+                json_dict = json.loads(json_bytes.decode("utf-8"))
+        except:
+            return False, ItemManager()
+
+        def _check_and_load(key_dic: dict, to_check: dict):
+            for key, value in key_dic.items():
+                if key in to_check:
+                    key_dic[key] = to_check[key]
+
+        manager = ItemManager()
+
+        properties = dict()
+        if "properties" in json_dict and isinstance(json_dict["properties"], dict):
+            for name, prop in json_dict["properties"].items():
+                kwargs = dict(
+                    name="", unit="", value_type=str, select=[], no_edit=False, mandatory=False
+                )
+
+                if "name" not in prop:
+                    continue
+                _check_and_load(kwargs, prop)
+                properties[name] = manager.create_property(**kwargs)
+
+        categories = dict()
+        if "categories" in json_dict and isinstance(json_dict["categories"], dict):
+            for name, cat in json_dict["categories"].items():
+                kwargs = dict(name=name, description="", properties=[])
+
+                _check_and_load(kwargs, cat)
+                manager.add_category(**kwargs)
+
+                categories[name] = cat
+
+        def _make_items(items: dict[str, dict]):
+            item_dict = dict()
+            for ID, item in items.items():
+                kwargs = dict(properties=[], notes="", category="")
+
+                if "category" not in item:
+                    continue
+                _check_and_load(kwargs, item)
+                if kwargs["category"] not in manager.categories:
+                    continue
+
+                cat = manager.categories[kwargs["category"]]
+
+                # Check if all indicated properties are valid
+                props_kwargs = dict()
+                for prop in kwargs["properties"]:
+                    name, value = list(prop.items())[0]
+                    if name not in properties:
+                        continue
+                    props_kwargs[name] = value
+
+                item_dict[ID] = Item(cat, **props_kwargs)
+                item_dict[ID].notes = kwargs["notes"]
+            return item_dict
+
+        items = {}
+        if "items" in json_dict and isinstance(json_dict["items"], dict):
+            items = _make_items(json_dict["items"])
+            for item in items.values():
+                manager.add_item(item)
+
+        retired_items = {}
+        if "retired_items" in json_dict and isinstance(json_dict["retired_items"], dict):
+            retired_items = _make_items(json_dict["retired_items"])
+            manager.retired_items = set(retired_items.values())
+
+        def _make_persons(persons: dict[str, dict]):
+            persons_ret = dict()
+            for ID, person in persons.items():
+                kwargs = dict(name="", birthday="", place="", note="", loans=[])
+                _check_and_load(kwargs, person)
+
+                kwargs["birthday"] = to_date(kwargs["birthday"])
+
+                loans = kwargs["loans"]
+                del kwargs["loans"]
+                persons_ret[ID] = (Person(**kwargs), loans)
+            return persons_ret
+
+        persons = dict()
+        if "persons" in json_dict and isinstance(json_dict["persons"], dict):
+            persons = _make_persons(json_dict["persons"])
+
+        retired_persons = dict()
+        if "retired_persons" in json_dict and isinstance(json_dict["retired_persons"], dict):
+            retired_persons = _make_persons(json_dict["retired_persons"])
+
+        def _make_loans(loans: dict[str, dict], persons_dic, item_dic):
+            loan_ret = dict()
+            for item_id, item_loans in loans.items():
+                if item_id not in items:
+                    continue
+                valid_loans = []
+                for loan in item_loans:
+                    kwargs = dict(person="", date="", note="", timestamp=0, item="")
+                    _check_and_load(kwargs, loan)
+                    if kwargs["person"] not in persons_dic:
+                        continue
+                    item = item_dic[item_id]
+                    person = persons_dic[kwargs["person"]][0]
+                    valid_loans.append(
+                        {
+                            "item": item,
+                            "person": person,
+                            "date": to_date(kwargs["date"]),
+                            "note": kwargs["note"],
+                            "timestamp": kwargs["timestamp"],
+                        }
+                    )
+
+                loan_ret[item_id] = valid_loans
+            return loan_ret
+
+        if "loans" in json_dict and isinstance(json_dict["loans"], dict):
+            loans = _make_loans(json_dict["loans"], persons, items)
+
+            to_add = {}
+            for item_id, item_loans in loans.items():
+                for loan in item_loans:
+                    manager.create_loan(**loan)
+
+        if "retired_loans" in json_dict and isinstance(json_dict["loans"], dict):
+            loans = _make_loans(json_dict["retired_loans"], retired_persons, retired_items)
+
+            to_add = {}
+            for item_id, item_loans in loans.items():
+                for loan in item_loans:
+                    to_add[loan["item"]] = ItemLoan(**loan)
+            manager.retired_loans = to_add
+
+        self.current_manager = manager
+
+        return True, self.current_manager
+
     def loan_most_recent(self):
         files = os.listdir(os.path.join(self.path, "sauvegardes"))
-        print(files)
+        files.sort()
+
+        return self.load(os.path.join(self.path, "sauvegardes", files[-1]))

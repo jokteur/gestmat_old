@@ -61,13 +61,16 @@ class ItemLoan:
     note: str
     uuid: str
 
-    def __init__(self, item: Item, date: datetime.date, person: Person, note: str):
+    def __init__(self, item: Item, date: datetime.date, person: Person, note: str, timestamp=None):
         """Represents a loan of an item"""
         self.item = item
         self.date = date
         self.person = person
         self.note = note
-        self.timestamp = time.time()
+        if not timestamp:
+            self.timestamp = time.time()
+        else:
+            self.timestamp = timestamp
         self.person.register_loan(self)
         self.uuid = str(uuid.uuid4())
 
@@ -137,6 +140,7 @@ class ItemManager:
                 list_properties.append(prop)
 
         self.categories[name] = ItemCategory(name, description, list_properties)
+        return self.categories[name]
 
     def update_category_key(self, category: ItemCategory, old_name: str):
         if old_name == category.name:
@@ -163,7 +167,7 @@ class ItemManager:
     def create_property(
         self,
         name,
-        value_type: str = "",
+        value_type: str = str,
         unit: str = "",
         mandatory: bool = False,
         select: list = [],
@@ -228,14 +232,16 @@ class ItemManager:
             self.retired_items.remove(item)
             self.items.add(item)
 
-    def create_loan(self, item: Item, date: datetime.date, person: Person, note: str = ""):
+    def create_loan(
+        self, item: Item, date: datetime.date, person: Person, note: str = "", timestamp=None
+    ):
         """Creates a loan.
         The item must already exist. If the person does not exists, it is added to the list of persons having a loan
         """
         if item not in self.items:
             raise KeyError(f"{item} is not in list of available items")
 
-        loan = ItemLoan(item, date, person, note)
+        loan = ItemLoan(item, date, person, note, timestamp)
 
         self.persons.add(person)
 

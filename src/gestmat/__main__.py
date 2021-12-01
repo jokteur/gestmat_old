@@ -76,12 +76,12 @@ def hello_world():
 
 def main():
 
-    # manager = hello_world()
+    manager = hello_world()
 
     wkspace = Workspace()
-    wkspace.init(ItemManager())
-    manager = wkspace.loan_most_recent()
-    # wkspace.save()
+    wkspace.init(manager)
+    wkspace.save()
+    success, manager = wkspace.loan_most_recent()
 
     ui = UIManager(manager)
 

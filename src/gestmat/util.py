@@ -2,7 +2,6 @@
 #
 # MatGest
 
-import datetime
 import unicodedata
 from datetime import date, datetime
 
@@ -17,7 +16,7 @@ class Singleton(type):
 
 
 class ProtectedDatetime:
-    def __init__(self, date: datetime) -> None:
+    def __init__(self, date: datetime):
         self.date = date
         self.year, self.month, self.day = "", "", ""
         if date:
@@ -30,6 +29,18 @@ class ProtectedDatetime:
             return self.date.strftime(format)
         else:
             return ""
+
+
+def to_date(date: str, split="/", order_reverse=False):
+    try:
+        if order_reverse:
+            day, month, year = date.split("/")
+        else:
+            year, month, day = date.split("/")
+        date = datetime(int(year), int(month), int(day))
+    except:
+        date = ProtectedDatetime("")
+    return date
 
 
 def strip_accents(text):

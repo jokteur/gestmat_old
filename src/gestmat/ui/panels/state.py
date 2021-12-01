@@ -101,7 +101,7 @@ class StatePanel(Panel):
         parent = self.memory["view_uuid"]
 
         if not self.manager.loans:
-            dpg.add_text("Rien en emprunt")
+            dpg.add_text("Rien en emprunt", parent=parent)
             return
 
         with dpg.group(parent=parent):
