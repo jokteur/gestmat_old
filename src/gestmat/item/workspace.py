@@ -188,7 +188,7 @@ class Workspace(metaclass=Singleton):
         def _make_persons(persons: dict[str, dict]):
             persons_ret = dict()
             for ID, person in persons.items():
-                kwargs = dict(name="", birthday="", place="", note="", loans=[])
+                kwargs = dict(name="", surname="", birthday="", place="", note="", loans=[])
                 _check_and_load(kwargs, person)
 
                 kwargs["birthday"] = to_date(kwargs["birthday"])
