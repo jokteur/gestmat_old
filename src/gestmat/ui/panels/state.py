@@ -3,7 +3,7 @@ from datetime import datetime
 import dearpygui.dearpygui as dpg
 
 from ...item.workspace import Workspace
-from ..widgets import help, title
+from ..widgets import help, subtitle, title
 from ...item.manager import ItemManager
 from ...util import strip_accents
 from ..panel import Panel
@@ -145,7 +145,7 @@ class StatePanel(Panel):
             dpg.add_table_column(label="", width=35, no_sort=True, width_fixed=True)
             dpg.add_table_column(label="Date d'emprunt")
             dpg.add_table_column(label="Type")
-            dpg.add_table_column(label="N°", width=50)
+            # dpg.add_table_column(label="N°")
             dpg.add_table_column(label="Nom")
             dpg.add_table_column(label="Prénom")
             dpg.add_table_column(label="Date de naissance")
@@ -154,22 +154,34 @@ class StatePanel(Panel):
 
             for item, loans in self.manager.loans.items():
                 for loan in loans:
-                    strings = {
-                        loan.date.strftime("%Y/%m/%d"): dict(),
-                        item.category.description: dict(),
-                        item.id.value: dict(),
-                        loan.person.surname: dict(),
-                        loan.person.name: dict(),
-                        loan.person.birthday.strftime("%Y/%m/%d"): dict(),
-                        loan.person.place: dict(),
-                        loan.person.note: dict(wrap=0),
-                    }
-                    strs = [strip_accents(string) for string in strings.keys()]
+                    strings = [
+                        loan.date.strftime("%Y/%m/%d"),
+                        item.category.description,
+                        # item.n.value,
+                        loan.person.surname,
+                        loan.person.name,
+                        loan.person.birthday.strftime("%Y/%m/%d"),
+                        loan.person.place,
+                        loan.person.note,
+                    ]
+                    strs = [strip_accents(string) for string in strings]
                     with dpg.table_row(filter_key=" ".join(strs)):
                         self.memory["checkbox"][loan] = dpg.generate_uuid()
                         dpg.add_checkbox(label="", tag=self.memory["checkbox"][loan])
-                        for text, prop in strings.items():
-                            dpg.add_text(text, **prop)
+                        dpg.add_text(strings[0])
+                        with dpg.group(horizontal=True):
+                            dpg.add_text("(infos)", color=(125, 125, 125))
+                            with dpg.tooltip(dpg.last_item()):
+                                for _, prop in item.properties.items():
+                                    with dpg.group(horizontal=True) as g_uid:
+                                        subtitle(f"{prop.name}", g_uid)
+                                        dpg.add_text(f"{prop.value}")
+                            dpg.add_text(strings[1])
+                        dpg.add_text(strings[2])
+                        dpg.add_text(strings[3])
+                        dpg.add_text(strings[4])
+                        dpg.add_text(strings[5])
+                        dpg.add_text(strings[6])
 
     def sub_person_view(self):
         pass

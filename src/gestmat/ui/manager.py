@@ -87,7 +87,7 @@ class UIManager(metaclass=Singleton):
             with dpg.popup("modal_button_popup", modal=True, tag="modal_popup"):
                 pass
 
-        dpg.create_viewport(title="Gestion materiel", width=1000, height=600)
+        dpg.create_viewport(title="Gestion materiel", width=1100, height=700)
 
         self.load_panel("loan")
         # demo.show_demo()
