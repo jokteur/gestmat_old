@@ -73,8 +73,9 @@ def define_new_property(
     no_edit=False,
 ):
     special_name = strip_special_chars(name)
-    prop_class_name = f"Property{special_name[0].upper()}{special_name[1:]}"
+    name = name.replace("'", "\\'")
 
+    prop_class_name = f"Property{special_name[0].upper()}{special_name[1:]}"
     value_type_str = {int: "int", float: "float", str: "str"}[value_type]
     cls_str = (
         f"class {prop_class_name}(ItemProperty):\n"
@@ -183,9 +184,9 @@ class Item:
             for prop in category.properties:
                 self.properties[prop] = prop("")
         else:
-            self.properties = {
-                type(ItemProperty.get(k)(v)): ItemProperty.get(k)(v) for k, v in props.items()
-            }
+            self.properties = {}
+            for k, v in props.items():
+                self.properties[type(ItemProperty.get(k)(v))] = ItemProperty.get(k)(v)
 
             # Check for mandatory properties that have not been defined
             undefined_list = []

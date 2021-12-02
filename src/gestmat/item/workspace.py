@@ -253,8 +253,16 @@ class Workspace(metaclass=Singleton):
 
         return True, self.current_manager
 
+    def new_clean_manager(self) -> ItemManager:
+        self.current_manager = ItemManager()
+        self.current_manager.create_property("N°", no_edit=True)
+        return self.current_manager
+
     def loan_most_recent(self):
         files = os.listdir(os.path.join(self.path, "sauvegardes"))
         files.sort()
+
+        if not len(files):
+            return True, self.new_clean_manager()
 
         return self.load(os.path.join(self.path, "sauvegardes", files[-1]))
