@@ -3,7 +3,7 @@ from datetime import datetime
 import dearpygui.dearpygui as dpg
 
 from ...item.workspace import Workspace
-from ..widgets import help, subtitle, title
+from ..widgets import help, item_info_box, subtitle, title
 from ...item.manager import ItemManager
 from ...util import strip_accents
 from ..panel import Panel
@@ -171,11 +171,8 @@ class StatePanel(Panel):
                         dpg.add_text(strings[0])
                         with dpg.group(horizontal=True):
                             dpg.add_text("(infos)", color=(125, 125, 125))
-                            with dpg.tooltip(dpg.last_item()):
-                                for _, prop in item.properties.items():
-                                    with dpg.group(horizontal=True) as g_uid:
-                                        subtitle(f"{prop.name}", g_uid)
-                                        dpg.add_text(f"{prop.value}")
+                            with dpg.tooltip(dpg.last_item()) as tooltip_uid:
+                                item_info_box(item, tooltip_uid)
                             dpg.add_text(strings[1])
                         dpg.add_text(strings[2])
                         dpg.add_text(strings[3])

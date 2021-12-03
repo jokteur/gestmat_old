@@ -2,6 +2,7 @@ import colorsys
 from datetime import datetime
 import dearpygui.dearpygui as dpg
 
+from ..item.representation import Item
 from .res import Ressources
 
 ressources = Ressources()
@@ -176,3 +177,10 @@ class DateWidget:
         except ValueError:
             return None
         return date
+
+
+def item_info_box(item: Item, parent: int):
+    for prop in item.category.properties_order:
+        with dpg.group(horizontal=True, parent=parent) as g_uid:
+            subtitle(f"{item.properties[prop].name}", g_uid)
+            dpg.add_text(f"{item.properties[prop].value}")

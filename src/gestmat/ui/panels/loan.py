@@ -6,7 +6,7 @@ from ...util import ProtectedDatetime
 from ...item.representation import ItemCategory, Item
 from ...item.manager import ItemManager, Person
 from ..panel import Panel
-from ..widgets import DateWidget, error, modal, title, subtitle, help
+from ..widgets import DateWidget, error, item_info_box, modal, title, subtitle, help
 
 workspace = Workspace()
 
@@ -111,13 +111,9 @@ class LoanPanel(Panel):
                     g_uid,
                 )
                 dpg.add_text(" )")
-            for i, prop in enumerate(props):
-                value = item.properties[prop].value
-                if not value:
-                    continue
-                if i:
-                    dpg.add_text(" / ")
-                dpg.add_text(f"{prop.name} : {item.properties[prop].value}")
+            dpg.add_text(" (infos)", color=(125, 125, 125))
+            with dpg.tooltip(dpg.last_item()) as tooltip_uid:
+                item_info_box(item, tooltip_uid)
 
     def build_object_table(self, cat: ItemCategory, obj_num, parent, all_items=False) -> None:
         def _sort_callback(sender, sort_specs):
