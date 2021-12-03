@@ -6,7 +6,7 @@ import dearpygui.dearpygui as dpg
 
 from ...item.workspace import Workspace
 
-from ...item.representation import Item, ItemCategory
+from ...item.representation import Item, ItemCategory, ItemProperty
 
 from ...item.manager import ItemManager
 from ..panel import Panel
@@ -45,17 +45,134 @@ class ManagementPanel(Panel):
     def clean_memory(self):
         self.short_memory = copy.deepcopy(self.clean_memory_dict)
 
-    def sub_category(self, cat):
+    def generate_prop_name(self, prop: ItemProperty):
+        name = prop.name
+        properties = []
+        if prop.mandatory:
+            properties.append("ne peut pas être vide")
+        if prop.select:
+            properties.append("liste à choix")
+        if properties:
+            name += f" ({', '.join(properties)})"
+        return name
+
+    def reload_chose_prop_popup(self):
+        tag = self.short_memory["prop_popup_uuid"]
+
+        def choose(s, u, d):
+            self.short_memory["props"][d] = {}
+            self.generate_props_widget()
+            self.reload_chose_prop_popup()
+
+        dpg.delete_item(tag, children_only=True)
+        for prop, active in self.manager.properties.items():
+            if active and prop not in self.short_memory["props"]:
+                with dpg.group(horizontal=True, parent=tag):
+                    dpg.add_button(label="Choisir", callback=choose, user_data=prop)
+                    dpg.add_text(self.generate_prop_name(prop))
+
+    def generate_props_widget(self):
+        tag = self.short_memory["prop_uuid"]
+        dpg.delete_item(tag, children_only=True)
+
+        def remove(s, d, u):
+            del self.short_memory["props"][u]
+            self.reload_chose_prop_popup()
+            self.generate_props_widget()
+
+        def up(s, d, u):
+            props = list(self.short_memory["props"].keys())
+            props_config = list(self.short_memory["props"].values())
+            prop_idx = props.index(u)
+            props[prop_idx], props[prop_idx - 1] = props[prop_idx - 1], props[prop_idx]
+            props_config[prop_idx], props_config[prop_idx - 1] = (
+                props_config[prop_idx - 1],
+                props_config[prop_idx],
+            )
+            self.short_memory["props"] = dict(zip(props, props_config))
+            self.reload_chose_prop_popup()
+            self.generate_props_widget()
+
+        def down(s, d, u):
+            props = list(self.short_memory["props"].keys())
+            props_config = list(self.short_memory["props"].values())
+            prop_idx = props.index(u)
+            props[prop_idx], props[prop_idx + 1] = props[prop_idx + 1], props[prop_idx]
+            props_config[prop_idx], props_config[prop_idx + 1] = (
+                props_config[prop_idx + 1],
+                props_config[prop_idx],
+            )
+            self.short_memory["props"] = dict(zip(props, props_config))
+            self.reload_chose_prop_popup()
+            self.generate_props_widget()
+
+        if "props" not in self.short_memory or not self.short_memory["props"]:
+            dpg.add_text("Veuillez sélectionner au moins une propriété", parent=tag)
+            return
+
+        for i, (prop, config) in enumerate(self.short_memory["props"].items()):
+            name = self.generate_prop_name(prop)
+            with dpg.group(parent=tag, horizontal=True):
+                dpg.add_button(label="Enlever", callback=remove, user_data=prop)
+                if i:
+                    dpg.add_button(label="Haut", callback=up, user_data=prop)
+                if i < len(self.short_memory["props"]) - 1:
+                    dpg.add_button(label="Bas", callback=down, user_data=prop)
+                dpg.add_text(name)
+
+    def sub_category(self, cat: ItemCategory, no_reload=False):
         desc_tag = dpg.generate_uuid()
         name_tag = dpg.generate_uuid()
 
         self.short_memory["ok"] = True
 
-        if cat:
+        if cat and not no_reload:
             self.short_memory["desc"] = cat.description
             self.short_memory["name"] = cat.name
-            self.short_memory["props"] = set(cat.properties)
+            self.short_memory["props"] = {prop: {} for prop in cat.properties_order}
             self.short_memory["clean_memory"] = True
+
+        def _save():
+            desc = dpg.get_value(desc_tag)
+            name = dpg.get_value(name_tag)
+            props = list(self.short_memory["props"].keys())
+
+            if not desc:
+                return
+            if not name:
+                return
+            if not props:
+                return
+            if not self.short_memory["ok"]:
+                return
+
+
+            old_name = cat.name
+            cat.name = name
+            cat.description = desc
+            self.manager.update_properties(cat, props)
+            self.manager.update_category_key(cat, old_name)
+            workspace.save()
+            self.build_main_window()
+            self.clean_memory()
+
+        def _new():
+            desc = dpg.get_value(desc_tag)
+            name = dpg.get_value(name_tag)
+            props = list(self.short_memory["props"].keys())
+
+            if not desc:
+                return
+            if not name:
+                return
+            if not props:
+                return
+            if not self.short_memory["ok"]:
+                return
+
+            self.manager.add_category(name, desc, props)
+            self.build_main_window()
+            self.clean_memory()
 
         def set_desc(s, a, u):
             self.short_memory["desc"] = a
@@ -86,17 +203,15 @@ class ManagementPanel(Panel):
                 self.short_memory["ok"] = True
                 dpg.set_item_label(name_tag, "Nom court")
 
-        def set_prop(s, a, u):
-            if a:
-                self.short_memory["props"].add(u)
-            else:
-                self.short_memory["props"].remove(u)
-
         uuid = dpg.generate_uuid()
-        if cat:
-            title(f"Éditer la catégorie '{cat.name}'", parent=self.parent)
-        else:
-            title("Ajouter une nouvelle catégorie / type d'objet", parent=self.parent)
+        with dpg.group(horizontal=True, parent=self.parent) as uid:
+            if cat:
+                title(f"Éditer la catégorie '{cat.name}'", uid)
+                dpg.add_button(label="Enregistrer", callback=_save, height=40)
+            else:
+                title("Ajouter une nouvelle catégorie / type d'objet", uid)
+                dpg.add_button(label="Ajouter catégorie", callback=_new, height=40)
+
         with dpg.group(tag=uuid, parent=self.parent):
             dpg.add_input_text(
                 label="Nom du type d'objet",
@@ -112,89 +227,26 @@ class ManagementPanel(Panel):
                 default_value=self.short_memory["name"],
                 callback=set_name,
             )
-            local_uuid = dpg.generate_uuid()
-            with dpg.group(tag=local_uuid, horizontal=True):
-                subtitle("Avec les propriétés", parent=local_uuid)
+            with dpg.group(horizontal=True) as g_uid:
+                subtitle("Avec les propriétés", parent=g_uid)
                 dpg.add_button(
                     label="Gérer les propriétés",
-                    callback=factory(
-                        self.load_subpanel,
-                        "property_management",
-                        True,
-                        cat,
-                    ),
+                    callback=factory(self.load_subpanel, "property_management", True, cat, True),
                 )
-            for prop in self.manager.properties.keys():
-                name = prop.name
-                properties = []
-                if prop.mandatory:
-                    properties.append("ne peut pas être vide")
-                if prop.select:
-                    properties.append("liste à choix")
-                if properties:
-                    name += f" ({', '.join(properties)})"
-                dpg.add_checkbox(
-                    label=name,
-                    user_data=prop,
-                    callback=set_prop,
-                    default_value=(True if prop in self.short_memory["props"] else False),
-                )
+            self.short_memory["prop_uuid"] = dpg.generate_uuid()
+            with dpg.group(tag=self.short_memory["prop_uuid"]):
+                pass
 
-            def _save():
-                desc = dpg.get_value(desc_tag)
-                name = dpg.get_value(name_tag)
-                props = self.short_memory["props"]
-
-                if not desc:
-                    return
-                if not name:
-                    return
-                if not props:
-                    return
-                if not self.short_memory["ok"]:
-                    return
-
-                props_in_order = []
-                for prop in self.manager.properties.keys():
-                    if prop in props:
-                        props_in_order.append(prop)
-
-                old_name = cat.name
-                cat.name = name
-                cat.description = desc
-                self.manager.update_properties(cat, props_in_order)
-                self.manager.update_category_key(cat, old_name)
-                workspace.save()
-                self.build_main_window()
-                self.clean_memory()
-
-            def _new():
-                desc = dpg.get_value(desc_tag)
-                name = dpg.get_value(name_tag)
-                props = self.short_memory["props"]
-
-                props_in_order = []
-                for prop in self.manager.properties.keys():
-                    if prop in props:
-                        props_in_order.append(prop)
-
-                if not desc:
-                    return
-                if not name:
-                    return
-                if not props:
-                    return
-                if not self.short_memory["ok"]:
-                    return
-
-                self.manager.add_category(name, desc, props_in_order)
-                self.build_main_window()
-                self.clean_memory()
-
-            if cat:
-                dpg.add_button(label="Enregistrer", callback=_save)
-            else:
-                dpg.add_button(label="Ajouter catégorie", callback=_new)
+            self.generate_props_widget()
+            dpg.add_button(label="+")
+            self.short_memory["prop_popup_uuid"] = dpg.generate_uuid()
+            with dpg.popup(
+                dpg.last_item(),
+                mousebutton=dpg.mvMouseButton_Left,
+                tag=self.short_memory["prop_popup_uuid"],
+            ):
+                pass
+            self.reload_chose_prop_popup()
 
     def prop_popup(self, parent, cat, prop=False):
         popup_uuid = dpg.generate_uuid()
@@ -295,7 +347,7 @@ class ManagementPanel(Panel):
                 dpg.configure_item(popup_uuid, show=False)
 
                 workspace.save()
-                self.load_subpanel("property_management", True, cat)
+                self.load_subpanel("property_management", True, cat, True)
 
             def _new():
                 name = dpg.get_value(name_uuid)
@@ -315,7 +367,7 @@ class ManagementPanel(Panel):
                 dpg.configure_item(popup_uuid, show=False)
 
                 workspace.save()
-                self.load_subpanel("property_management", True, cat)
+                self.load_subpanel("property_management", True, cat, True)
 
             _save_edit = _edit if prop else _new
 
@@ -345,11 +397,11 @@ class ManagementPanel(Panel):
                 dpg.add_button(label="Éditer", tag=tag)
                 self.prop_popup(tag, cat, prop)
 
-    def sub_property_management(self, cat):
+    def sub_property_management(self, cat, reload):
         uuid = dpg.generate_uuid()
         with dpg.group(tag=uuid, parent=self.parent):
             dpg.add_button(
-                label="Retour", callback=factory(self.load_subpanel, "category", False, cat)
+                label="Retour", callback=factory(self.load_subpanel, "category", False, cat, reload)
             )
 
             g_uuid = dpg.generate_uuid()
