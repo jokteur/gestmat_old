@@ -34,6 +34,7 @@ class ManagementPanel(Panel):
             "clean_memory": False,
         }
         self.memory = {"table_cells": dict(), "editing_status": dict()}
+        self.cells = {}
         self.short_memory = copy.deepcopy(self.clean_memory_dict)
 
     def load_subpanel(self, name, no_back_button, *args):
@@ -44,6 +45,7 @@ class ManagementPanel(Panel):
 
     def clean_memory(self):
         self.short_memory = copy.deepcopy(self.clean_memory_dict)
+        self.cells = {}
 
     def generate_prop_name(self, prop: ItemProperty):
         name = prop.name
@@ -145,7 +147,6 @@ class ManagementPanel(Panel):
                 return
             if not self.short_memory["ok"]:
                 return
-
 
             old_name = cat.name
             cat.name = name
@@ -472,11 +473,11 @@ class ManagementPanel(Panel):
             if dpg.get_value(select_tag):
                 dpg.set_item_label(select_tag, "Désélectionner tout")
                 for item in cat.registered_items:
-                    dpg.set_value(self.memory["table_cells"][item]["checkbox"], True)
+                    dpg.set_value(self.cells[cat]["items"][item]["checkbox"], True)
             else:
                 dpg.set_item_label(select_tag, "Sélectionner tout")
                 for item in cat.registered_items:
-                    dpg.set_value(self.memory["table_cells"][item]["checkbox"], False)
+                    dpg.set_value(self.cells[cat]["items"][item]["checkbox"], False)
 
         dpg.add_checkbox(
             label="Sélectionner tout", parent=parent, callback=_select_all, tag=select_tag
@@ -512,16 +513,16 @@ class ManagementPanel(Panel):
 
     def add_row(self, cat: ItemCategory, item: Item, props, default_value=False, is_new=False):
         row_id = dpg.generate_uuid()
-        with dpg.table_row(parent=self.memory["table_cells"][cat]["table_id"], tag=row_id):
+        with dpg.table_row(parent=self.cells[cat]["table_id"], tag=row_id):
             checkbox_uuid = dpg.generate_uuid()
             dpg.add_checkbox(label="", tag=checkbox_uuid, default_value=default_value)
-            if not item in self.memory["table_cells"]:
-                self.memory["table_cells"][item] = {}
-            self.memory["table_cells"][item]["row_id"] = row_id
-            self.memory["table_cells"][item]["checkbox"] = checkbox_uuid
-            self.memory["table_cells"][item]["is_new"] = is_new
+            if not item in self.cells[cat]["items"]:
+                self.cells[cat]["items"][item] = {}
+            self.cells[cat]["items"][item]["row_id"] = row_id
+            self.cells[cat]["items"][item]["checkbox"] = checkbox_uuid
+            self.cells[cat]["items"][item]["is_new"] = is_new
 
-            for prop in props:
+            for prop in list(cat.properties_order):
                 if not prop in item.properties:
                     item.add_property(prop)
                 txt = item.properties[prop].value
@@ -529,35 +530,53 @@ class ManagementPanel(Panel):
                     tag = dpg.last_item()
                     dpg.add_text(txt)
 
-                self.memory["table_cells"][item][prop] = tag
+                self.cells[cat]["items"][item][prop] = tag
 
     def remove_row(self, cat: ItemCategory, item: Item):
-        dpg.delete_item(self.memory["table_cells"][item]["row_id"])
-        dpg.configure_item(
-            self.memory["table_cells"][cat]["window_id"],
-            height=self.generate_height(len(cat.registered_items) + 1),
-        )
+        dpg.delete_item(self.cells[cat]["items"][item]["row_id"])
+        self.set_table_height(cat)
 
     def edit_callback_factory(self, cat: ItemCategory, items: list[Item]):
-        return lambda *args, cat=cat, items=items: self.edit_all(cat, items)
+        return lambda *args, cat=cat, items=items: self.edit_all(cat)
+
+    def delete_items_in_cat(self, cat: ItemCategory):
+        to_remove = []
+        for item in self.cells[cat]["items"].keys():
+            if not dpg.get_value(self.cells[cat]["items"][item]["checkbox"]):
+                continue
+
+            to_remove.append(item)
+            self.manager.retire_item(item)
+            cat.unregister_item(item)
+            self.remove_row(item.category, item)
+
+        for item in to_remove:
+            del self.cells[cat]["items"][item]
+
+        print(cat.registered_items)
+        print([item for item in self.cells[cat]["items"].keys()])
+
+        workspace.save()
 
     def reset_edit_button(self, cat: ItemCategory, items: list[Item]):
-        g_uuid = self.memory["table_cells"][cat]["group_id"]
+        g_uuid = self.cells[cat]["group_id"]
         dpg.delete_item(g_uuid, children_only=True)
         dpg.add_button(
             label="Éditer",
             parent=g_uuid,
             callback=self.edit_callback_factory(cat, items),
         )
-        self.memory["table_cells"][cat]["is_editing"] = False
+        colored_button("Supprimer", g_uuid, 0, lambda *args, cat=cat: self.delete_items_in_cat(cat))
+        self.cells[cat]["is_editing"] = False
 
     def save_all(self, cat: ItemCategory, items: list[Item], new_item=False) -> None:
         is_okay = True
+        items = self.cells[cat]["items"]
         for item in items:
             if item not in self.memory["editing_status"]:
                 continue
             for prop in item.properties:
-                tag = self.memory["table_cells"][item][prop]
+                tag = self.cells[cat]["items"][item][prop]
                 child = dpg.get_item_children(tag, 1)[0]
                 value = dpg.get_value(child)
 
@@ -569,8 +588,11 @@ class ManagementPanel(Panel):
                     item.properties[prop].value = value
         if is_okay:
             self.reset_edit_button(cat, items)
-            self.memory["table_cells"][item]["is_new"] = False
-            # dpg.configure_item(self.memory["table_cells"][cat])
+            for item in items:
+                if self.cells[cat]["items"][item]["is_new"]:
+                    self.manager.add_item(item)
+                    self.cells[cat]["items"][item]["is_new"] = False
+                    cat.register_item(item)
         else:
             modal(
                 "Certaines propriétés n'ont pas pu être sauvegardées\n"
@@ -581,32 +603,34 @@ class ManagementPanel(Panel):
 
         return
 
-    def edit_all(self, cat: ItemCategory, items: list[Item], new_item=False) -> None:
-        g_uuid = self.memory["table_cells"][cat]["group_id"]
+    def edit_all(self, cat: ItemCategory, new_item=False) -> None:
+        g_uuid = self.cells[cat]["group_id"]
+
+        items = self.cells[cat]["items"].keys()
 
         def cancel():
             for item in items:
                 if item not in self.memory["editing_status"]:
                     continue
                 for prop in item.properties:
-                    tag = self.memory["table_cells"][item][prop]
+                    tag = self.cells[cat]["items"][item][prop]
                     dpg.delete_item(tag, children_only=True)
                     dpg.add_text(item.properties[prop].value, parent=tag)
-                if self.memory["table_cells"][item]["is_new"]:
+                if self.cells[cat]["items"][item]["is_new"]:
                     self.manager.delete_item(item)
                     self.remove_row(cat, item)
             self.reset_edit_button(cat, items)
 
         num_select = 0
-        for item in items:
-            if not dpg.get_value(self.memory["table_cells"][item]["checkbox"]):
+        for item, item_dic in self.cells[cat]["items"].items():
+            if not dpg.get_value(item_dic["checkbox"]):
                 self.memory["editing_status"][item] = False
                 continue
 
             self.memory["editing_status"][item] = True
             num_select += 1
             for prop in item.properties:
-                tag = self.memory["table_cells"][item][prop]
+                tag = item_dic[prop]
                 dpg.delete_item(tag, children_only=True)
                 if prop.select:
                     dpg.add_combo(
@@ -628,12 +652,11 @@ class ManagementPanel(Panel):
         if not num_select:
             return
 
-        self.memory["table_cells"][cat]["is_editing"] = True
-        items = list(items)
+        self.cells[cat]["is_editing"] = True
 
         # Update the Edit button group
         save_uuid = dpg.generate_uuid()
-        self.memory["table_cells"][cat]["save_button"] = save_uuid
+        self.cells[cat]["save_button"] = save_uuid
         dpg.delete_item(g_uuid, children_only=True)
         dpg.add_button(
             label="Sauvegarder",
@@ -644,29 +667,29 @@ class ManagementPanel(Panel):
         dpg.add_button(label="Annuler", callback=cancel, parent=g_uuid)
 
     def add_item(self, cat: ItemCategory) -> None:
-        items = cat.registered_items
+        items = self.cells[cat]["items"].keys()
 
-        dic = self.memory["table_cells"]
-        dpg.configure_item(
-            dic[cat]["window_id"],
-            height=self.generate_height(len(items) + 1),
-        )
+        self.set_table_height(cat)
         for item in items:
-            if not self.memory["table_cells"][item]["is_new"]:
-                dpg.set_value(dic[item]["checkbox"], False)
+            if not self.cells[cat]["items"][item]["is_new"]:
+                dpg.set_value(self.cells[cat]["items"][item]["checkbox"], False)
 
         props = cat.properties_order
-        new_item = Item(cat, __empty__=True)
-        dic[new_item] = {}
+        new_item = Item(cat, __empty__=True, __no_registration__=True)
+        self.cells[cat]["items"][new_item] = {"is_new": True}
 
         self.add_row(cat, new_item, props, True, True)
 
-        self.manager.add_item(new_item)
-
-        self.edit_all(cat, cat.registered_items, True)
+        self.edit_all(cat, True)
 
     def generate_height(self, num):
         return 30 * (num + 3)
+
+    def set_table_height(self, cat: ItemCategory):
+        dpg.configure_item(
+            self.cells[cat]["window_id"],
+            height=self.generate_height(len(self.cells[cat]["items"]) + 1),
+        )
 
     def main_window(self, parent) -> None:
         self.manager.categories
@@ -697,27 +720,35 @@ class ManagementPanel(Panel):
                     items = cat.registered_items
                     button_uuid = dpg.generate_uuid()
                     g_uuid = dpg.generate_uuid()
+                    uuid = dpg.generate_uuid()
+                    table_uuid = dpg.generate_uuid()
+                    self.cells[cat] = {
+                        "is_editing": False,
+                        "window_id": uuid,
+                        "table_id": table_uuid,
+                        "group_id": g_uuid,
+                        "items": {},
+                    }
+
                     with dpg.group(horizontal=True):
                         dpg.add_button(
                             label="Ajouter objet",
                             tag=button_uuid,
                             callback=lambda *args, cat=cat: self.add_item(cat),
                         )
-                        with dpg.group(horizontal=True, tag=g_uuid):
+                        with dpg.group(horizontal=True, tag=g_uuid) as uid:
                             if items:
                                 dpg.add_button(
                                     label="Éditer",
                                     callback=self.edit_callback_factory(cat, items),
                                 )
+                                colored_button(
+                                    "Supprimer",
+                                    uid,
+                                    0,
+                                    lambda *args, cat=cat: self.delete_items_in_cat(cat),
+                                )
 
-                    uuid = dpg.generate_uuid()
-                    table_uuid = dpg.generate_uuid()
-                    self.memory["table_cells"][cat] = {
-                        "is_editing": False,
-                        "window_id": uuid,
-                        "table_id": table_uuid,
-                        "group_id": g_uuid,
-                    }
                     # approx_height = dpg.get_item_height(header_uuid)
                     # hard-coded value, approx_height does not work
                     with dpg.child_window(height=self.generate_height(len(items)), tag=uuid):

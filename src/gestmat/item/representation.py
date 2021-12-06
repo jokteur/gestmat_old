@@ -165,7 +165,7 @@ class Item:
     category: ItemCategory
     uuid: str
 
-    def __init__(self, category: ItemCategory, __empty__=False, **props):
+    def __init__(self, category: ItemCategory, __empty__=False, __no_registration__=False, **props):
         """
         Create a new item.
 
@@ -213,7 +213,8 @@ class Item:
                 self.properties.pop(prop, None)
 
         self.category = category
-        self.category.register_item(self)
+        if not __no_registration__:
+            self.category.register_item(self)
 
         self.notes = {}
         self.uuid = str(uuid.uuid4())

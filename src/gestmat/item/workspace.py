@@ -170,7 +170,7 @@ class Workspace(metaclass=Singleton):
                         continue
                     props_kwargs[name] = value
 
-                item_dict[ID] = Item(cat, **props_kwargs)
+                item_dict[ID] = Item(cat, __no_registration__=True, **props_kwargs)
                 item_dict[ID].notes = kwargs["notes"]
             return item_dict
 
@@ -178,6 +178,7 @@ class Workspace(metaclass=Singleton):
         if "items" in json_dict and isinstance(json_dict["items"], dict):
             items = _make_items(json_dict["items"])
             for item in items.values():
+                item.category.register_item(item)
                 manager.add_item(item)
 
         retired_items = {}
