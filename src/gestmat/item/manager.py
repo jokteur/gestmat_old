@@ -114,7 +114,9 @@ class ItemManager:
         self.retired_persons = set()
         self.empty_person = Person()
 
-    def add_category(self, name: str, description: str, properties: list):
+    def add_category(
+        self, name: str, description: str, properties: list, properties_order: list = None
+    ):
         """
         Adds a category of items to the manager
 
@@ -139,7 +141,19 @@ class ItemManager:
             elif isinstance(prop, type):
                 list_properties.append(prop)
 
-        self.categories[name] = ItemCategory(name, description, list_properties)
+        prop_order = []
+        if properties_order is not None:
+            for prop in properties_order:
+                if isinstance(prop, str):
+                    prop_type = ItemProperty.get(strip_special_chars(prop))
+                    if prop_type:
+                        prop_order.append(prop_type)
+                elif isinstance(prop, type):
+                    prop_order.append(prop)
+        else:
+            prop_order = list(list_properties)
+
+        self.categories[name] = ItemCategory(name, description, list_properties, prop_order)
         return self.categories[name]
 
     def update_category_key(self, category: ItemCategory, old_name: str):

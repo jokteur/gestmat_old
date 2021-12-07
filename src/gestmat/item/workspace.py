@@ -142,7 +142,7 @@ class Workspace(metaclass=Singleton):
         categories = dict()
         if "categories" in json_dict and isinstance(json_dict["categories"], dict):
             for name, cat in json_dict["categories"].items():
-                kwargs = dict(name=name, description="", properties=[])
+                kwargs = dict(name=name, description="", properties=[], properties_order=[])
 
                 _check_and_load(kwargs, cat)
                 manager.add_category(**kwargs)

@@ -33,7 +33,7 @@ class ManagementPanel(Panel):
             "props": set(),
             "clean_memory": False,
         }
-        self.memory = {"table_cells": dict(), "editing_status": dict()}
+        self.memory = {"editing_status": dict()}
         self.cells = {}
         self.short_memory = copy.deepcopy(self.clean_memory_dict)
 
@@ -45,7 +45,7 @@ class ManagementPanel(Panel):
 
     def clean_memory(self):
         self.short_memory = copy.deepcopy(self.clean_memory_dict)
-        self.cells = {}
+        # self.cells = {}
 
     def generate_prop_name(self, prop: ItemProperty):
         name = prop.name
@@ -529,8 +529,8 @@ class ManagementPanel(Panel):
                 with dpg.group():
                     tag = dpg.last_item()
                     dpg.add_text(txt)
-
-                self.cells[cat]["items"][item][prop] = tag
+                    tag2 = dpg.last_item()
+                    self.cells[cat]["items"][item][prop] = [tag, tag2]
 
     def remove_row(self, cat: ItemCategory, item: Item):
         dpg.delete_item(self.cells[cat]["items"][item]["row_id"])
@@ -553,9 +553,6 @@ class ManagementPanel(Panel):
         for item in to_remove:
             del self.cells[cat]["items"][item]
 
-        print(cat.registered_items)
-        print([item for item in self.cells[cat]["items"].keys()])
-
         workspace.save()
 
     def reset_edit_button(self, cat: ItemCategory, items: list[Item]):
@@ -569,30 +566,34 @@ class ManagementPanel(Panel):
         colored_button("Supprimer", g_uuid, 0, lambda *args, cat=cat: self.delete_items_in_cat(cat))
         self.cells[cat]["is_editing"] = False
 
-    def save_all(self, cat: ItemCategory, items: list[Item], new_item=False) -> None:
+    def save_all(self, cat: ItemCategory, new_item=False) -> None:
         is_okay = True
         items = self.cells[cat]["items"]
         for item in items:
             if item not in self.memory["editing_status"]:
                 continue
+
+            tmp_ = True
             for prop in item.properties:
                 tag = self.cells[cat]["items"][item][prop]
-                child = dpg.get_item_children(tag, 1)[0]
-                value = dpg.get_value(child)
+                value = dpg.get_value(dpg.get_item_children(tag[0], 1)[0])
 
                 if not value and prop.mandatory:
                     is_okay = False
+                    tmp_ = False
                 else:
-                    dpg.delete_item(tag, children_only=True)
-                    dpg.add_text(value, parent=tag)
+                    dpg.delete_item(tag[0], children_only=True)
+                    dpg.add_text(value, parent=tag[0])
                     item.properties[prop].value = value
+
+            if tmp_ and self.cells[cat]["items"][item]["is_new"]:
+                self.manager.add_item(item)
+                dpg.set_value(self.cells[cat]["items"][item]["checkbox"], False)
+                self.cells[cat]["items"][item]["is_new"] = False
+                cat.register_item(item)
+
         if is_okay:
             self.reset_edit_button(cat, items)
-            for item in items:
-                if self.cells[cat]["items"][item]["is_new"]:
-                    self.manager.add_item(item)
-                    self.cells[cat]["items"][item]["is_new"] = False
-                    cat.register_item(item)
         else:
             modal(
                 "Certaines propriétés n'ont pas pu être sauvegardées\n"
@@ -604,49 +605,61 @@ class ManagementPanel(Panel):
         return
 
     def edit_all(self, cat: ItemCategory, new_item=False) -> None:
-        g_uuid = self.cells[cat]["group_id"]
-
         items = self.cells[cat]["items"].keys()
 
         def cancel():
+            to_del = []
             for item in items:
                 if item not in self.memory["editing_status"]:
                     continue
                 for prop in item.properties:
-                    tag = self.cells[cat]["items"][item][prop]
+                    tag = self.cells[cat]["items"][item][prop][0]
                     dpg.delete_item(tag, children_only=True)
                     dpg.add_text(item.properties[prop].value, parent=tag)
                 if self.cells[cat]["items"][item]["is_new"]:
                     self.manager.delete_item(item)
                     self.remove_row(cat, item)
+                    to_del.append(item)
+
+            for item in to_del:
+                self.cells[cat]["items"].pop(item)
+                self.set_table_height(cat)
             self.reset_edit_button(cat, items)
+
+        def _set_value(_, value, data):
+            data[0].properties[data[1]].value = value
 
         num_select = 0
         for item, item_dic in self.cells[cat]["items"].items():
             if not dpg.get_value(item_dic["checkbox"]):
                 self.memory["editing_status"][item] = False
                 continue
-
             self.memory["editing_status"][item] = True
             num_select += 1
             for prop in item.properties:
                 tag = item_dic[prop]
-                dpg.delete_item(tag, children_only=True)
+                default_value = item.properties[prop].value
+                dpg.delete_item(tag[0], children_only=True)
                 if prop.select:
                     dpg.add_combo(
                         prop.select,
-                        parent=tag,
+                        parent=tag[0],
                         label="",
-                        default_value=item.properties[prop].value,
+                        default_value=default_value,
                         width=-1,
+                        user_data=(item, prop),
+                        callback=_set_value,
                     )
                 else:
                     dpg.add_input_text(
-                        parent=tag,
+                        parent=tag[0],
                         label="",
-                        default_value=item.properties[prop].value,
+                        default_value=default_value,
                         width=-1,
+                        user_data=(item, prop),
+                        callback=_set_value,
                     )
+                item_dic[prop] = [tag[0], dpg.last_item()]
 
         # Nothing has been selected
         if not num_select:
@@ -655,12 +668,13 @@ class ManagementPanel(Panel):
         self.cells[cat]["is_editing"] = True
 
         # Update the Edit button group
+        g_uuid = self.cells[cat]["group_id"]
         save_uuid = dpg.generate_uuid()
         self.cells[cat]["save_button"] = save_uuid
         dpg.delete_item(g_uuid, children_only=True)
         dpg.add_button(
             label="Sauvegarder",
-            callback=lambda *args, cat=cat, items=items: self.save_all(cat, items, new_item),
+            callback=lambda *args, cat=cat, items=items: self.save_all(cat, new_item),
             parent=g_uuid,
             tag=save_uuid,
         )
@@ -676,7 +690,7 @@ class ManagementPanel(Panel):
 
         props = cat.properties_order
         new_item = Item(cat, __empty__=True, __no_registration__=True)
-        self.cells[cat]["items"][new_item] = {"is_new": True}
+        self.cells[cat]["items"][new_item] = {}
 
         self.add_row(cat, new_item, props, True, True)
 

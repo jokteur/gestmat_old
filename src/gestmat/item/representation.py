@@ -108,13 +108,22 @@ class ItemCategory:
     properties_order: list[ItemProperty]
     registered_items: Set["Item"]
 
-    def __init__(self, name: str, description: str, properties: list[Any]):
+    def __init__(
+        self,
+        name: str,
+        description: str,
+        properties: list[Any],
+        properties_order: list[ItemProperty] = None,
+    ):
         """Class for defining types or categories of items, for e.g. chairs, computer, etc."""
         self.registered_items = set()
         self.properties = set(properties)
         self.name = name
         self.description = description
-        self.properties_order = list(properties)
+        if properties_order is None:
+            self.properties_order = list(properties)
+        else:
+            self.properties_order = list(properties_order)
 
     def __repr__(self):
         text = ""
