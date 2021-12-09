@@ -30,7 +30,7 @@ class ManagementPanel(Panel):
         self.clean_memory_dict = {
             "desc": "",
             "name": "",
-            "props": set(),
+            "props": dict(),
             "clean_memory": False,
         }
         self.memory = {"editing_status": dict()}
@@ -40,11 +40,18 @@ class ManagementPanel(Panel):
     def load_subpanel(self, name, no_back_button, *args):
         dpg.delete_item(self.parent, children_only=True)
         if not no_back_button:
-            dpg.add_button(label="Retour", callback=self.build_main_window, parent=self.parent)
+            dpg.add_button(
+                label="Retour", callback=factory(self.build_main_window), parent=self.parent
+            )
         self.__getattribute__(f"sub_{name}")(*args)
 
-    def clean_memory(self):
-        self.short_memory = copy.deepcopy(self.clean_memory_dict)
+    def reset_memory(self):
+        self.short_memory = {
+            "desc": "",
+            "name": "",
+            "props": dict(),
+            "clean_memory": False,
+        }
         # self.cells = {}
 
     def generate_prop_name(self, prop: ItemProperty):
@@ -154,8 +161,8 @@ class ManagementPanel(Panel):
             self.manager.update_properties(cat, props)
             self.manager.update_category_key(cat, old_name)
             workspace.save()
-            self.build_main_window()
-            self.clean_memory()
+            self.reset_memory()
+            factory(self.build_main_window)()
 
         def _new():
             desc = dpg.get_value(desc_tag)
@@ -172,8 +179,8 @@ class ManagementPanel(Panel):
                 return
 
             self.manager.add_category(name, desc, props)
-            self.build_main_window()
-            self.clean_memory()
+            self.reset_memory()
+            factory(self.build_main_window)()
 
         def set_desc(s, a, u):
             self.short_memory["desc"] = a
@@ -420,7 +427,7 @@ class ManagementPanel(Panel):
         dpg.delete_item(self.parent, children_only=True)
 
         if self.short_memory["clean_memory"]:
-            self.clean_memory()
+            self.reset_memory()
 
         self.main_window(self.parent)
 
