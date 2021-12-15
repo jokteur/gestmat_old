@@ -57,3 +57,10 @@ def strip_accents(text):
 def strip_special_chars(text):
     text = "".join([char for char in text if char.isalnum() or char == "_"])
     return strip_accents(text)
+
+
+def factory(fct, *args, **kwargs):
+    def new_func():
+        return fct(*args, **kwargs)
+
+    return new_func

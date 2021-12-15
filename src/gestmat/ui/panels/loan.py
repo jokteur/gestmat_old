@@ -2,7 +2,7 @@ from datetime import datetime
 import dearpygui.dearpygui as dpg
 
 from ...item.workspace import Workspace
-from ...util import ProtectedDatetime
+from ...util import ProtectedDatetime, factory
 from ...item.representation import ItemCategory, Item
 from ...item.manager import ItemManager, Person
 from ..panel import Panel
@@ -396,7 +396,7 @@ class LoanPanel(Panel):
         self.parent = parent
         with dpg.group(horizontal=True, parent=parent) as g_uid:
             title("Faire un nouveau prêt", g_uid)
-            dpg.add_button(height=40, label="Sauvegarder", callback=self.save_loan)
+            dpg.add_button(height=40, label="Sauvegarder", callback=factory(self.save_loan))
             tag = dpg.generate_uuid()
             self.memory["save_modal"] = tag
             with dpg.popup(
