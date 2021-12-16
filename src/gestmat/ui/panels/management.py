@@ -582,6 +582,8 @@ class ManagementPanel(Panel):
 
             tmp_ = True
             for prop in item.properties:
+                if prop not in cat.properties:
+                    continue
                 tag = self.cells[cat]["items"][item][prop]
                 value = dpg.get_value(dpg.get_item_children(tag[0], 1)[0])
 
@@ -620,6 +622,8 @@ class ManagementPanel(Panel):
                 if item not in self.memory["editing_status"]:
                     continue
                 for prop in item.properties:
+                    if prop not in cat.properties:
+                        continue
                     tag = self.cells[cat]["items"][item][prop][0]
                     dpg.delete_item(tag, children_only=True)
                     dpg.add_text(item.properties[prop].value, parent=tag)
@@ -644,6 +648,8 @@ class ManagementPanel(Panel):
             self.memory["editing_status"][item] = True
             num_select += 1
             for prop in item.properties:
+                if prop not in cat.properties:
+                    continue
                 tag = item_dic[prop]
                 default_value = item.properties[prop].value
                 dpg.delete_item(tag[0], children_only=True)
