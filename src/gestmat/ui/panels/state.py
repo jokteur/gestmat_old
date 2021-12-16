@@ -117,7 +117,7 @@ class StatePanel(Panel):
                 callback=lambda s, a, u: dpg.set_value(u, strip_accents(dpg.get_value(s))),
             )
             help(
-                "Tapez n'importe quel mot du tableau dans le champ de recherche pour trouver une ligne.\n"
+                "Tapez n'importe quel mot du tableau ou propriété dans le champ de recherche pour trouver une ligne.\n"
                 "Cliquez sur les en-tête de colonnes pour trier.",
                 group,
             )
@@ -154,6 +154,7 @@ class StatePanel(Panel):
 
             for item, loans in self.manager.loans.items():
                 for loan in loans:
+                    prop_values = "".join([item.properties[prop].value for prop in item.properties])
                     strings = [
                         loan.date.strftime("%Y/%m/%d"),
                         item.category.description,
@@ -163,6 +164,7 @@ class StatePanel(Panel):
                         loan.person.birthday.strftime("%Y/%m/%d"),
                         loan.person.place,
                         loan.person.note,
+                        prop_values,
                     ]
                     strs = [strip_accents(string) for string in strings]
                     with dpg.table_row(filter_key=" ".join(strs)):
