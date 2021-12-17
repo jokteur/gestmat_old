@@ -180,7 +180,7 @@ class DateWidget:
 
 
 def item_info_box(item: Item, parent: int):
-    for prop in item.category.properties_order:
+    for prop in item._category.properties_order:
         with dpg.group(horizontal=True, parent=parent) as g_uid:
-            subtitle(f"{item.properties[prop].name}", g_uid)
-            dpg.add_text(f"{item.properties[prop].value}")
+            subtitle(f"{item._properties[prop].name}", g_uid)
+            dpg.add_text(f"{item._properties[prop].value}")

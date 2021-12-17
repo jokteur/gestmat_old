@@ -91,7 +91,7 @@ class LoanPanel(Panel):
     def choose_item(self, obj_num, item: Item):
         tag = self.memory["objects"][obj_num]
         dpg.delete_item(tag, children_only=True)
-        cat = item.category
+        cat = item._category
         props = list(cat.properties_order)
 
         self.memory["chosen_items"].add(item)
@@ -211,9 +211,9 @@ class LoanPanel(Panel):
                             else:
                                 dpg.add_text("Non")
                         for prop in props:
-                            if not prop in item.properties:
+                            if not prop in item._properties:
                                 item.add_property(prop)
-                            dpg.add_text(item.properties[prop].value)
+                            dpg.add_text(item._properties[prop].value)
         else:
             dpg.add_text("Pas d'objets disponible", parent=parent)
 

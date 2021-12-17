@@ -4,9 +4,11 @@ import time
 
 import dearpygui.dearpygui as dpg
 
+from gestmat.util import strip_special_chars
+
 from ...item.workspace import Workspace
 
-from ...item.representation import Item, ItemCategory, ItemProperty
+from ...item.representation import Item, ItemCategory, ItemProperty, forbidden_property_names
 
 from ...item.manager import ItemManager
 from ..panel import Panel
@@ -282,17 +284,25 @@ class ManagementPanel(Panel):
 
             def verify(s, a, u):
                 names = set([n.name for n in self.manager.properties.keys()])
+                special_names = set([strip_special_chars(name).lower() for name in names])
                 if prop:
-                    names.remove(prop_name)
-                if a in names:
-                    dpg.set_item_label(name_uuid, "Nom (déjà existant)")
-                    dpg.set_item_label(save_uuid, "")
-                elif not a:
+                    special_names.remove(prop.special_name.lower())
+                if not a:
                     dpg.set_item_label(name_uuid, "Nom (ne peut pas être vide)")
                     dpg.set_item_label(save_uuid, "")
+                    return False
+                elif strip_special_chars(a).lower() in special_names:
+                    dpg.set_item_label(name_uuid, "Nom (déjà existant)")
+                    dpg.set_item_label(save_uuid, "")
+                    return False
+                elif a in forbidden_property_names or not strip_special_chars(a):
+                    dpg.set_item_label(name_uuid, "Nom (pas autorisé)")
+                    dpg.set_item_label(save_uuid, "")
+                    return False
                 else:
                     dpg.set_item_label(name_uuid, "Nom")
                     dpg.set_item_label(save_uuid, "Enregistrer")
+                    return True
 
             def list_edit(s, a, u):
                 nonlocal current_list_input_uuid
@@ -343,12 +353,15 @@ class ManagementPanel(Panel):
                 choices = []
                 if not name:
                     return
+                if not verify(None, name, None):
+                    return
                 if list_choice == "liste à choix":
                     choices = dpg.get_value(current_list_input_uuid)
                     choices = [choice.strip() for choice in choices.split(";;")]
                     if not choices:
                         return
                 prop.name = name
+                prop.special_name = strip_special_chars(name).upper()
                 prop.select = choices
                 radio = True if radio == "oui" else False
                 prop.mandatory = radio
@@ -364,6 +377,8 @@ class ManagementPanel(Panel):
                 list_choice = dpg.get_value(list_uuid)
                 choices = []
                 if not name:
+                    return
+                if not verify(None, name, None):
                     return
                 if list_choice == "liste à choix":
                     choices = dpg.get_value(current_list_input_uuid)
@@ -530,9 +545,9 @@ class ManagementPanel(Panel):
             self.cells[cat]["items"][item]["is_new"] = is_new
 
             for prop in list(cat.properties_order):
-                if not prop in item.properties:
+                if not prop in item._properties:
                     item.add_property(prop)
-                txt = item.properties[prop].value
+                txt = item._properties[prop].value
                 with dpg.group():
                     tag = dpg.last_item()
                     dpg.add_text(txt)
@@ -555,7 +570,7 @@ class ManagementPanel(Panel):
             to_remove.append(item)
             self.manager.retire_item(item)
             cat.unregister_item(item)
-            self.remove_row(item.category, item)
+            self.remove_row(item._category, item)
 
         for item in to_remove:
             del self.cells[cat]["items"][item]
@@ -581,7 +596,7 @@ class ManagementPanel(Panel):
                 continue
 
             tmp_ = True
-            for prop in item.properties:
+            for prop in item._properties:
                 if prop not in cat.properties:
                     continue
                 tag = self.cells[cat]["items"][item][prop]
@@ -593,7 +608,7 @@ class ManagementPanel(Panel):
                 else:
                     dpg.delete_item(tag[0], children_only=True)
                     dpg.add_text(value, parent=tag[0])
-                    item.properties[prop].value = value
+                    item._properties[prop].value = value
 
             if tmp_ and self.cells[cat]["items"][item]["is_new"]:
                 self.manager.add_item(item)
@@ -621,12 +636,12 @@ class ManagementPanel(Panel):
             for item in items:
                 if item not in self.memory["editing_status"]:
                     continue
-                for prop in item.properties:
+                for prop in item._properties:
                     if prop not in cat.properties:
                         continue
                     tag = self.cells[cat]["items"][item][prop][0]
                     dpg.delete_item(tag, children_only=True)
-                    dpg.add_text(item.properties[prop].value, parent=tag)
+                    dpg.add_text(item._properties[prop].value, parent=tag)
                 if self.cells[cat]["items"][item]["is_new"]:
                     self.manager.delete_item(item)
                     self.remove_row(cat, item)
@@ -638,7 +653,7 @@ class ManagementPanel(Panel):
             self.reset_edit_button(cat, items)
 
         def _set_value(_, value, data):
-            data[0].properties[data[1]].value = value
+            data[0]._properties[data[1]].value = value
 
         num_select = 0
         for item, item_dic in self.cells[cat]["items"].items():
@@ -647,11 +662,11 @@ class ManagementPanel(Panel):
                 continue
             self.memory["editing_status"][item] = True
             num_select += 1
-            for prop in item.properties:
+            for prop in item._properties:
                 if prop not in cat.properties:
                     continue
                 tag = item_dic[prop]
-                default_value = item.properties[prop].value
+                default_value = item._properties[prop].value
                 dpg.delete_item(tag[0], children_only=True)
                 if prop.select:
                     dpg.add_combo(

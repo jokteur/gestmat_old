@@ -10,7 +10,6 @@ from .panel import Panel
 from .panels.management import ManagementPanel
 from .panels.loan import LoanPanel
 from .panels.state import StatePanel
-from .panels.back import ReturnPanel
 from .panels.welcome import WelcomePanel
 from ..item.manager import ItemManager
 from .themes import create_theme_imgui_light
@@ -31,7 +30,6 @@ class UIManager(metaclass=Singleton):
         self.panels = {
             "management": ManagementPanel,
             "loan": LoanPanel,
-            "return": ReturnPanel,
             "welcome": WelcomePanel,
             "state": StatePanel,
         }

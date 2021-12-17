@@ -44,7 +44,7 @@ class Workspace(metaclass=Singleton):
         mega_dict["categories"] = dict()
         for name, category in self.current_manager.categories.items():
             mega_dict["categories"][name] = {
-                "registered_items": [item.uuid for item in category.registered_items],
+                "registered_items": [item._uuid for item in category.registered_items],
                 "properties": [prop.special_name for prop in category.properties],
                 "properties_order": [prop.name for prop in category.properties_order],
                 "description": category.description,
@@ -53,10 +53,10 @@ class Workspace(metaclass=Singleton):
         def _get_item_dict_repr(item: Item):
             return {
                 "properties": [
-                    {prop.special_name: prop.value} for prop in item.properties.values()
+                    {prop.special_name: prop.value} for prop in item._properties.values()
                 ],
-                "notes": item.notes,
-                "category": item.category.name,
+                "notes": item._notes,
+                "category": item._category.name,
             }
 
         def _get_person_dict_repr(person: Person):
@@ -79,11 +79,11 @@ class Workspace(metaclass=Singleton):
 
         mega_dict["items"] = dict()
         for item in self.current_manager.items:
-            mega_dict["items"][item.uuid] = _get_item_dict_repr(item)
+            mega_dict["items"][item._uuid] = _get_item_dict_repr(item)
 
         mega_dict["retired_items"] = dict()
         for item in self.current_manager.retired_items:
-            mega_dict["retired_items"][item.uuid] = _get_item_dict_repr(item)
+            mega_dict["retired_items"][item._uuid] = _get_item_dict_repr(item)
 
         mega_dict["persons"] = dict()
         for person in self.current_manager.persons:
@@ -95,11 +95,11 @@ class Workspace(metaclass=Singleton):
 
         mega_dict["loans"] = dict()
         for item, loans in self.current_manager.loans.items():
-            mega_dict["loans"][item.uuid] = [_get_loan_dict_repr(loan) for loan in loans]
+            mega_dict["loans"][item._uuid] = [_get_loan_dict_repr(loan) for loan in loans]
 
         mega_dict["retired_loans"] = dict()
         for item, loans in self.current_manager.retired_loans.items():
-            mega_dict["retired_loans"][item.uuid] = [_get_loan_dict_repr(loan) for loan in loans]
+            mega_dict["retired_loans"][item._uuid] = [_get_loan_dict_repr(loan) for loan in loans]
 
         name = f"{datetime.datetime.today().strftime('%Y_%m_%d')}_save.json"
         json_str = json.dumps(mega_dict)
@@ -178,7 +178,7 @@ class Workspace(metaclass=Singleton):
         if "items" in json_dict and isinstance(json_dict["items"], dict):
             items = _make_items(json_dict["items"])
             for item in items.values():
-                item.category.register_item(item)
+                item._category.register_item(item)
                 manager.add_item(item)
 
         retired_items = {}

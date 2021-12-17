@@ -205,9 +205,9 @@ class ItemManager:
             self.properties[prop] = True
 
     def add_item(self, item: Item):
-        if item.category.name not in self.categories:
-            self.categories[item.category.name] = item.category
-        for prop in item.properties:
+        if item._category.name not in self.categories:
+            self.categories[item._category.name] = item._category
+        for prop in item._properties:
             if prop not in self.properties:
                 self.properties[prop] = True
 
@@ -223,7 +223,7 @@ class ItemManager:
         """
         if item in self.items:
             self.items.remove(item)
-            item.category.unregister_item(item)
+            item._category.unregister_item(item)
 
     def retire_item(self, item: Item, retire_loans: bool = True):
         """

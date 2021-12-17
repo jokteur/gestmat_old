@@ -154,10 +154,12 @@ class StatePanel(Panel):
 
             for item, loans in self.manager.loans.items():
                 for loan in loans:
-                    prop_values = "".join([item.properties[prop].value for prop in item.properties])
+                    prop_values = "".join(
+                        [item._properties[prop].value for prop in item._properties]
+                    )
                     strings = [
                         loan.date.strftime("%Y/%m/%d"),
-                        item.category.description,
+                        item._category.description,
                         # item.n.value,
                         loan.person.surname,
                         loan.person.name,

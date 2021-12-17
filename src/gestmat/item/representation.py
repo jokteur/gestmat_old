@@ -168,13 +168,25 @@ class ItemCategory:
             self.properties_order.remove(prop)
 
 
+forbidden_property_names = {
+    "_properties",
+    "_notes",
+    "_category",
+    "_uuid",
+    "__empty__",
+    "__no_registration__",
+}
+
+
 class Item:
     properties: dict[type, ItemProperty]
     notes: list[dict]
     category: ItemCategory
     uuid: str
 
-    def __init__(self, category: ItemCategory, __empty__=False, __no_registration__=False, **props):
+    def __init__(
+        self, _category: ItemCategory, __empty__=False, __no_registration__=False, **props
+    ):
         """
         Create a new item.
 
@@ -187,66 +199,66 @@ class Item:
             Raise an error if a mandatory property is not defined.
             Properties that are not defined in ItemCategory are ignored.
         """
-        self.properties = {}
+        self._properties = {}
 
         if __empty__:
-            for prop in category.properties:
-                self.properties[prop] = prop("")
+            for prop in _category.properties:
+                self._properties[prop] = prop("")
         else:
-            self.properties = {}
+            self._properties = {}
             for k, v in props.items():
-                self.properties[type(ItemProperty.get(k)(v))] = ItemProperty.get(k)(v)
+                self._properties[type(ItemProperty.get(k)(v))] = ItemProperty.get(k)(v)
 
             # Check for mandatory properties that have not been defined
             undefined_list = []
-            for prop in category.properties:
-                if prop.mandatory and prop not in self.properties.keys():
+            for prop in _category.properties:
+                if prop.mandatory and prop not in self._properties.keys():
                     undefined_list.append(prop.__name__.replace("Property", "").lower())
 
             if undefined_list:
                 raise ValueError(
-                    f"When defining Item of category '{category.name}', the following mandatory properties have not been defined:\n"
+                    f"When defining Item of category '{_category.name}', the following mandatory properties have not been defined:\n"
                     f"{undefined_list}"
                 )
 
             # Register the item at all defined properties
             to_remove = []
-            for prop_type, prop in self.properties.items():
-                if prop_type in category.properties:
+            for prop_type, prop in self._properties.items():
+                if prop_type in _category.properties:
                     prop.register_item(self)
                 else:
                     to_remove.append(prop_type)
 
             # Remove undesired properties
             for prop in to_remove:
-                self.properties.pop(prop, None)
+                self._properties.pop(prop, None)
 
-        self.category = category
+        self._category = _category
         if not __no_registration__:
-            self.category.register_item(self)
+            self._category.register_item(self)
 
-        self.notes = {}
-        self.uuid = str(uuid.uuid4())
+        self._notes = {}
+        self._uuid = str(uuid.uuid4())
 
     def __repr__(self) -> str:
         properties = ""
-        for p in self.properties.values():
+        for p in self._properties.values():
             properties += f", {p.get_name().lower()}={p.value}"
             if p.unit is not None and p.unit != "":
                 properties += f"({p.unit})"
-        return f"Item(type={self.category.name}{properties})"
+        return f"Item(type={self._category.name}{properties})"
 
     def __getattr__(self, key) -> ItemProperty:
         prop_type = ItemProperty.get(key)
-        for prop_type, prop in self.properties.items():
+        for prop_type, prop in self._properties.items():
             if isinstance(prop, prop_type):
                 return prop
         raise AttributeError(f"No attribute named {key!r}")
 
     def unregister_item(self) -> None:
-        for prop_type, prop in self.properties.items():
+        for prop_type, prop in self._properties.items():
             prop.unregister_item(self)
-        self.category.unregister_item(self)
+        self._category.unregister_item(self)
 
     def __del__(self) -> None:
         self.unregister_item()
@@ -256,20 +268,20 @@ class Item:
         if not timestamp:
             timestamp = time.time()
 
-        self.notes[timestamp] = text
+        self._notes[timestamp] = text
 
     def remove_note(self, timestamp) -> None:
         """Removes a note / remark from the item"""
-        if timestamp in self.notes:
-            del self.notes[timestamp]
+        if timestamp in self._notes:
+            del self._notes[timestamp]
 
     def add_property(self, property: type, erase=False) -> None:
         """
         Adds a property to the item
         """
-        if property in self.properties and not erase:
+        if property in self._properties and not erase:
             return
-        self.properties[property] = property("")
+        self._properties[property] = property("")
 
     def remove_property(self, property: type, ignore_mandatory=False) -> None:
         """Removes a property from the item.
@@ -280,9 +292,9 @@ class Item:
             property to remove from Item
         ignore_mandatory : bool
             if True, removes property even if mandatory"""
-        if property in self.properties:
-            if not self.properties[property].mandatory or ignore_mandatory:
-                self.properties.pop(property, None)
+        if property in self._properties:
+            if not self._properties[property].mandatory or ignore_mandatory:
+                self._properties.pop(property, None)
             else:
                 raise KeyError(
                     f"Cannot remove the property '{property.name}' because it is mandatory"
