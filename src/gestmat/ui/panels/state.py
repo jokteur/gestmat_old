@@ -2,10 +2,12 @@ from datetime import datetime
 
 import dearpygui.dearpygui as dpg
 
+from ...ui.panels.management import ManagementPanel
+
 from ...item.workspace import Workspace
-from ..widgets import help, item_info_box, subtitle, title
-from ...item.manager import ItemManager
-from ...util import strip_accents
+from ..widgets import help, item_info_box, subtitle, title, DateWidget, prepare_modal
+from ...item.manager import ItemManager, Person
+from ...util import strip_accents, factory, ProtectedDatetime
 from ..panel import Panel
 
 
@@ -184,8 +186,89 @@ class StatePanel(Panel):
                         dpg.add_text(strings[5])
                         dpg.add_text(strings[6])
 
+    def edit_person(self, person: Person):
+        name = person.name
+        surname = person.surname
+        birthday = person.birthday
+        place = person.place
+        note = person.note
+
+        tag, configure_modal, stop_show = prepare_modal()
+        name_uuid = dpg.generate_uuid()
+        surname_uuid = dpg.generate_uuid()
+        place_uuid = dpg.generate_uuid()
+        note_uuid = dpg.generate_uuid()
+
+        with dpg.group(horizontal=True, parent=tag):
+            dpg.add_text("                  Nom:")
+            dpg.add_input_text(width=200, tag=surname_uuid, default_value=surname)
+        with dpg.group(horizontal=True, parent=tag):
+            dpg.add_text("              Prénom:")
+            dpg.add_input_text(width=200, tag=name_uuid, default_value=name)
+        with dpg.group(horizontal=True, parent=tag) as birthday_uuid:
+            dpg.add_text("Date de naissance:")
+            date = DateWidget(tag, birthday)
+        with dpg.group(horizontal=True, parent=tag):
+            dpg.add_text("  Unité / Chambre:")
+            dpg.add_input_text(width=200, tag=place_uuid, default_value=place)
+        with dpg.group(horizontal=True, parent=tag):
+            dpg.add_text("          Remarque:")
+            dpg.add_input_text(
+                width=200,
+                height=50,
+                multiline=True,
+                tab_input=True,
+                default_value=note,
+                tag=note_uuid,
+            )
+
+        def _save():
+            person.name = dpg.get_value(name_uuid)
+            person.surname = dpg.get_value(surname_uuid)
+            person.place = dpg.get_value(place_uuid)
+            person.note = dpg.get_value(note_uuid)
+            person.birthday = ProtectedDatetime(date.get_date())
+            workspace.save()
+            stop_show()
+            self.load_subpanel("person_view")
+
+        with dpg.group(horizontal=True, parent=tag):
+            dpg.add_button(label="Enregistrer", callback=lambda s, u, d: _save())
+            dpg.add_button(label="Annuler", callback=lambda s, u, d: stop_show())
+
+        configure_modal()
+
     def sub_person_view(self):
-        pass
+        parent = self.memory["view_uuid"]
+
+        persons = list(self.manager.persons)
+        person_names = [person.surname for person in persons]
+        sorted_list = [i[0] for i in sorted(enumerate(person_names), key=lambda x: x[1].lower())]
+
+        for idx in sorted_list:
+            with dpg.group(horizontal=True, parent=parent) as g_uid:
+                dpg.add_button(label="Éditer", callback=factory(self.edit_person, persons[idx]))
+                subtitle("Nom, Prénom:", parent=g_uid)
+                surname = persons[idx].surname or "n/a"
+                name = persons[idx].name or "n/a"
+                if name == "n/a" and surname == "n/a":
+                    name = ""
+                dpg.add_text(f"{surname}, {name}")
+
+                dpg.add_text(" (infos)", color=(125, 125, 125))
+                with dpg.tooltip(dpg.last_item()) as tooltip_uid:
+                    with dpg.group(parent=tooltip_uid, horizontal=True) as g:
+                        subtitle("Date de naissance:", parent=g)
+                        birthday = persons[idx].birthday
+                        dpg.add_text(f"{birthday.strftime('%d/%m/%Y')}")
+                    with dpg.group(parent=tooltip_uid, horizontal=True) as g:
+                        subtitle("Unité - chambre:", parent=g)
+                        place = persons[idx].place
+                        dpg.add_text(f"{place}")
+                    with dpg.group(parent=tooltip_uid, horizontal=True) as g:
+                        subtitle("Remarque:", parent=g)
+                        note = persons[idx].note
+                        dpg.add_text(f"{note}")
 
     def main_window(self, parent) -> None:
         self.parent = parent

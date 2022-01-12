@@ -4,7 +4,7 @@ import time
 
 import dearpygui.dearpygui as dpg
 
-from gestmat.util import strip_special_chars
+from ...util import strip_special_chars
 
 from ...item.workspace import Workspace
 
@@ -640,8 +640,10 @@ class ManagementPanel(Panel):
                     if prop not in cat.properties:
                         continue
                     tag = self.cells[cat]["items"][item][prop][0]
-                    dpg.delete_item(tag, children_only=True)
-                    dpg.add_text(item._properties[prop].value, parent=tag)
+                    with dpg.mutex():
+                        dpg.delete_item(tag, children_only=True)
+                        # time.sleep(0.005)  # Hack fix
+                        dpg.add_text(item._properties[prop].value, parent=tag)
                 if self.cells[cat]["items"][item]["is_new"]:
                     self.manager.delete_item(item)
                     self.remove_row(cat, item)
@@ -667,26 +669,27 @@ class ManagementPanel(Panel):
                     continue
                 tag = item_dic[prop]
                 default_value = item._properties[prop].value
-                dpg.delete_item(tag[0], children_only=True)
-                if prop.select:
-                    dpg.add_combo(
-                        prop.select,
-                        parent=tag[0],
-                        label="",
-                        default_value=default_value,
-                        width=-1,
-                        user_data=(item, prop),
-                        callback=_set_value,
-                    )
-                else:
-                    dpg.add_input_text(
-                        parent=tag[0],
-                        label="",
-                        default_value=default_value,
-                        width=-1,
-                        user_data=(item, prop),
-                        callback=_set_value,
-                    )
+                with dpg.mutex():
+                    dpg.delete_item(tag[0], children_only=True)
+                    if prop.select:
+                        dpg.add_combo(
+                            prop.select,
+                            parent=tag[0],
+                            label="",
+                            default_value=default_value,
+                            width=-1,
+                            user_data=(item, prop),
+                            callback=_set_value,
+                        )
+                    else:
+                        dpg.add_input_text(
+                            parent=tag[0],
+                            label="",
+                            default_value=default_value,
+                            width=-1,
+                            user_data=(item, prop),
+                            callback=_set_value,
+                        )
                 item_dic[prop] = [tag[0], dpg.last_item()]
 
         # Nothing has been selected

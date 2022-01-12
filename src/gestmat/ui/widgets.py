@@ -80,6 +80,29 @@ def subtitle(text: str, parent, color=(10, 10, 10)):
         dpg.bind_item_font(item, ressources.fonts["bold"])
 
 
+def prepare_modal():
+    tag = "modal_popup"
+
+    def stop_show():
+        dpg.configure_item(tag, show=False)
+
+    dpg.delete_item(tag, children_only=True)
+
+    def configure_modal():
+        popup_width = dpg.get_item_width("modal_popup")
+        popup_height = dpg.get_item_height("modal_popup")
+        window_width = dpg.get_item_width("primary_window")
+        window_height = dpg.get_item_height("primary_window")
+        if popup_width < window_width and popup_height < window_height:
+            dpg.set_item_pos(
+                "modal_popup",
+                [(window_width - popup_width) / 2, (window_height - popup_height) / 2],
+            )
+        dpg.configure_item(tag, show=True)
+
+    return tag, configure_modal, stop_show
+
+
 def modal(text: str):
     tag = "modal_popup"
 
@@ -144,7 +167,7 @@ class DateWidget:
                 width=30,
                 tag=self.memory["day_uuid"],
                 callback=callback,
-                default_value=date.day if date else "",
+                default_value=f"{date.day:02d}" if date else "",
                 hint="Jour",
             )
             dpg.add_text("/")
@@ -154,7 +177,7 @@ class DateWidget:
                 width=30,
                 tag=self.memory["month_uuid"],
                 callback=callback,
-                default_value=date.month if date else "",
+                default_value=f"{date.month:02d}" if date else "",
                 hint="Mois",
             )
             dpg.add_text("/")
@@ -164,7 +187,7 @@ class DateWidget:
                 width=60,
                 tag=self.memory["year_uuid"],
                 callback=callback,
-                default_value=date.year if date else "",
+                default_value=f"{date.year:02d}" if date else "",
                 hint="Année",
             )
 

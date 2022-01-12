@@ -30,6 +30,12 @@ class ProtectedDatetime:
         else:
             return ""
 
+    def __bool__(self) -> bool:
+        if self.date:
+            return True
+        else:
+            return False
+
 
 def to_date(date: str, split="/", order_reverse=False):
     try:

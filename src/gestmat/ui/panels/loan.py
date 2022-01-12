@@ -262,10 +262,10 @@ class LoanPanel(Panel):
                 )
             with dpg.group(horizontal=True, parent=g_uuid):
                 dpg.add_text("                  Nom:")
-                dpg.add_text(person.surname, tag=self.memory["name_uuid"])
+                dpg.add_text(person.surname, tag=self.memory["surname_uuid"])
             with dpg.group(horizontal=True, parent=g_uuid):
                 dpg.add_text("              Prénom:")
-                dpg.add_text(person.name, tag=self.memory["surname_uuid"])
+                dpg.add_text(person.name, tag=self.memory["name_uuid"])
             with dpg.group(horizontal=True, parent=g_uuid):
                 dpg.add_text("Date de naissance:")
                 dpg.add_text(person.birthday.strftime("%d/%m/%Y"))
@@ -285,10 +285,10 @@ class LoanPanel(Panel):
 
             with dpg.group(horizontal=True, parent=g_uuid):
                 dpg.add_text("                  Nom:")
-                dpg.add_input_text(width=200, tag=self.memory["name_uuid"])
+                dpg.add_input_text(width=200, tag=self.memory["surname_uuid"])
             with dpg.group(horizontal=True, parent=g_uuid):
                 dpg.add_text("              Prénom:")
-                dpg.add_input_text(width=200, tag=self.memory["surname_uuid"])
+                dpg.add_input_text(width=200, tag=self.memory["name_uuid"])
             with dpg.group(horizontal=True, parent=g_uuid) as birthday_uuid:
                 dpg.add_text("Date de naissance:")
                 date = DateWidget(birthday_uuid)

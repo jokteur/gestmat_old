@@ -4,6 +4,7 @@ import json
 import gzip
 from ..util import Singleton, to_date
 from .manager import ItemManager, Item, Person, ItemLoan, ItemCategory, ItemProperty
+import pathlib
 
 
 class Workspace(metaclass=Singleton):
@@ -105,8 +106,17 @@ class Workspace(metaclass=Singleton):
         json_str = json.dumps(mega_dict)
         json_bytes = json_str.encode("utf-8")
 
+        desktop = pathlib.Path.home()
+        desktop_save = os.path.join(desktop, "Documents", "sauvegardes_gestion_mat")
+        try:
+            os.mkdir(desktop_save)
+        except:
+            pass
+
         try:
             with gzip.open(os.path.join(self.path, "sauvegardes", name), "w") as fout:
+                fout.write(json_bytes)
+            with gzip.open(os.path.join(desktop_save, name), "w") as fout:
                 fout.write(json_bytes)
         except:
             return False
